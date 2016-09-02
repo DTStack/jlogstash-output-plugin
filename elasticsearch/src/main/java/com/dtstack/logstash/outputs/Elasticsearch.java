@@ -210,16 +210,4 @@ public class Elasticsearch extends BaseOutput {
         }
         this.bulkProcessor.add(indexRequest);
     }
-    
-    
-    public static void main(String[] args) throws InterruptedException{
-        Map<String,Object> event = Maps.newConcurrentMap();
-        event.put("tenant_id",4);
-        event.put("@timestamp","2016-07-04T01:40:37.54Z");
-    	index ="dtlog-%{tenant_id}-%{+YYYY.MM.dd}";
-    	hosts = Lists.newArrayList("127.0.0.1:9300");
-    	Elasticsearch elasticsearch = new Elasticsearch(new HashMap<String,Object>());
-    	elasticsearch.prepare();
-    	elasticsearch.emit(event);
-    }
 }

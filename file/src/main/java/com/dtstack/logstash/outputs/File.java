@@ -146,19 +146,4 @@ public class File extends BaseOutput{
 		}
 		return bw;
 	}
-	
-	public static void main(String[] args) throws Exception {
-		// TODO Auto-generated method stub
-		path="/Users/sishuyss/ysq_%{tenant_id}_%{+YYYY.MM.dd}.txt";
-        Map<String,Object> event = Maps.newConcurrentMap();
-        event.put("tenant_id",4);
-        event.put("@timestamp","2016-07-18T21:33:24.483Z");
-        File file =new File(new HashMap<String,Object>());
-        file.prepare();
-        file.emit(event);
-//        String json = objectMapper.writeValueAsString(event);
-//        Map<String,Object> map = Maps.newHashMap();
-        System.out.println(event);
-	}
-
 }

@@ -91,15 +91,4 @@ public class Performance extends BaseOutput{
 		// TODO Auto-generated method stub
 		eventNumber.getAndIncrement();
 	}
-	
-	public static void main(String[] args){
-		interval = 1;
-		path = "/Users/sishuyss/ysq.log";
-		for(int i=0;i<3;i++){	
-			Performance performance = new Performance(new HashMap<String,Object>());
-			performance.prepare();	
-			performance.emit(new HashMap<String,Object>());
-		}
-
-	}
 }

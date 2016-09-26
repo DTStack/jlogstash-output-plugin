@@ -45,7 +45,7 @@ public class Kafka extends BaseOutput {
 	
 	private static String producerType ="sync";//sync async
 	
-	private static String compressionCodec = "none";//gzip,snappy,snappy,none
+	private static String compressionCodec = "none";//gzip,snappy,lz4,none
 	
 	private static String clientId ="";
 	

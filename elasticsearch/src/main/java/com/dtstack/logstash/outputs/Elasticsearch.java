@@ -2,23 +2,17 @@ package com.dtstack.logstash.outputs;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.settings.Settings.Builder;
-
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
 import com.dtstack.logstash.render.FreeMarkerRender;
 import com.dtstack.logstash.render.TemplateRender;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -63,9 +57,11 @@ public class Elasticsearch extends BaseOutput {
     
     private static int bulkSize = 15;
     
-    private static int  flushInterval = 1;
+    private static int  flushInterval = 5;//seconds
     
     private static int	concurrentRequests = 1;
+    
+    private static int pingTimeout=5;//seconds
     
     private BulkProcessor bulkProcessor;
     
@@ -74,7 +70,8 @@ public class Elasticsearch extends BaseOutput {
     private TemplateRender indexTypeRender =null;
     
     private TemplateRender idRender =null;
-
+    
+    
     public Elasticsearch(Map config) {
         super(config);
     }
@@ -96,7 +93,8 @@ public class Elasticsearch extends BaseOutput {
     @SuppressWarnings("unchecked")
     private void initESClient() throws NumberFormatException,
             UnknownHostException {
-        Builder builder  = Settings.settingsBuilder().put("client.transport.sniff", sniff);
+        Builder builder  = Settings.settingsBuilder().put("client.transport.sniff", sniff);  
+//        builder.put("client.transport.ping_timeout", pingTimeout);
         if(StringUtils.isNotBlank(cluster)){
         	builder.put("cluster.name", cluster);
         }
@@ -179,9 +177,7 @@ public class Elasticsearch extends BaseOutput {
                     public void afterBulk(long arg0, BulkRequest arg1,
                                           Throwable arg2) {
                     	ato.getAndSet(2);
-                        logger.error("bulk got exception");
-                        String message = arg2.getMessage();
-                        logger.error(message);
+                        logger.error("bulk got exception:",arg2.getMessage());
                     }
 
                     @Override

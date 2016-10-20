@@ -6,12 +6,16 @@ import java.io.FileWriter;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
@@ -22,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.date.UnixMSParser;
 import com.dtstack.logstash.render.Formatter;
+import com.google.common.collect.Maps;
 
 /**
  * 
@@ -39,18 +44,26 @@ public class Performance extends BaseOutput{
 		
 	private static int interval = 30;//seconds
 	
+	/**清理文件执行间隔时间*/
+	private static long monitorFileInterval = 10 * 60;//seconds
+	
 	private static String timeZone = "UTC";
 
 	@Required(required=true)
 	private static String path;
+		
+	/**key:文件路径, value:保留天数*/
+	private static Map<String, String> monitorPath;
 	
-	private static int maxSaveday = 8;//0表示无限制
+	private Map<String, String> fileTimeFormatMap = Maps.newHashMap();
 	
-	private String timeFormat = "";
+	private Map<String, String> fileNameRegMap = Maps.newHashMap();
 	
-	private String fileNamePattern = "";
+	private Map<String, String> pathDicMap = Maps.newHashMap();
 			 	
 	private static ExecutorService executor = Executors.newSingleThreadExecutor();
+	
+	private static ScheduledExecutorService scheduleExecutor = Executors.newScheduledThreadPool(1);
 	
 	public Performance(Map<String,Object> config){
 		super(config);
@@ -71,12 +84,6 @@ public class Performance extends BaseOutput{
 					DateTime dateTime =new UnixMSParser().parse(String.valueOf(Calendar.getInstance().getTimeInMillis()));
 					sb.append(dateTime.toString()).append(" ").append(number).append(System.getProperty("line.separator"));
 					String newPath = Formatter.format(new HashMap<String,Object>(),path,timeZone);
-					File newFile = new File(newPath);
-					if(!newFile.exists()){
-						newFile.createNewFile();
-						deleExpiredFile(newFile.getParentFile());
-					}
-					
 					fw = new FileWriter(newPath,true);
 					bufferedWriter = new BufferedWriter(fw);
 					bufferedWriter.write(sb.toString());
@@ -92,9 +99,7 @@ public class Performance extends BaseOutput{
 						logger.error(e.getMessage());
 					}
 				}
-		
 			}
-		
 		}
 	}
 
@@ -103,6 +108,10 @@ public class Performance extends BaseOutput{
 	public void prepare() {
 		compileTimeInfo();
 		executor.submit(new PerformanceEventRunnable());
+		
+		if(monitorPath != null && monitorPath.size() != 0){
+			scheduleExecutor.scheduleWithFixedDelay(new ExpiredFileDeleRunnabel(), 0, monitorFileInterval, TimeUnit.SECONDS);
+		}
 	}
 	
 	@Override
@@ -112,21 +121,60 @@ public class Performance extends BaseOutput{
 	}
 	
 	public void compileTimeInfo(){
-		Pattern filePattern = Pattern.compile("^(.*)(/|\\\\)([^/\\\\]*(\\%\\{\\+?(.*?)\\})\\S+)$");
-		Matcher matcher = filePattern.matcher(path);
-		if(!matcher.find()){
-			logger.error("setting performance path can not matcher to the pattern.");
+		
+		if(monitorPath == null || monitorPath.size() == 0){
+			logger.info("not setting monitorPath");
 			return;
 		}
 		
-		String fileName = matcher.group(3);
-		String timeStr = matcher.group(4);
-		timeFormat = matcher.group(5);
+		Pattern filePattern = Pattern.compile("^(.*)(/|\\\\)([^/\\\\]*(\\%\\{\\+?(.*?)\\})\\S+)$");
 		
-		fileNamePattern = fileName.replace(timeStr, "(\\S+)");
+		for(Entry<String, String> tmp : monitorPath.entrySet()){
+			
+			Matcher matcher = filePattern.matcher(tmp.getKey());
+			if(!matcher.find()){
+				logger.error("input path:{} can not matcher to the pattern.");
+				continue;
+			}
+			
+			String fileName = matcher.group(3);
+			String timeStr = matcher.group(4);
+			String timeFormat = matcher.group(5);
+			String fileNamePattern = fileName.replace(timeStr, "(\\S+)");
+			
+			pathDicMap.put(tmp.getKey(), matcher.group(1));
+			fileNameRegMap.put(tmp.getKey(), fileNamePattern);
+			fileTimeFormatMap.put(tmp.getKey(), timeFormat);
+		}
+		
 	}
 	
-	public void deleExpiredFile(File dic){
+	class ExpiredFileDeleRunnabel implements Runnable{
+
+		@Override
+		public void run() {
+			for(Entry<String, String> tmp : monitorPath.entrySet()){
+				String dicFileStr = pathDicMap.get(tmp.getKey());
+				if(dicFileStr == null){
+					continue;
+				}
+				
+				File dicFile = new File(dicFileStr);
+				if(!dicFile.exists() || !dicFile.isDirectory()){
+					continue;
+				}
+				
+				int maxSaveDay = NumberUtils.toInt(tmp.getValue(), 0);
+				String timeFormat = fileTimeFormatMap.get(tmp.getKey());
+				String fileNamePattern = fileNameRegMap.get(tmp.getKey());
+				
+				deleExpiredFile(dicFile, timeFormat, fileNamePattern, maxSaveDay);
+			}
+		}
+		
+	}
+	
+	public void deleExpiredFile(File dic, String timeFormat, String fileNamePattern, int maxSaveDay){
 		if(!dic.isDirectory()){
 			logger.error("invalid file dictory:{}.", dic.getPath());
 			return;
@@ -136,7 +184,7 @@ public class Performance extends BaseOutput{
 				withZone(DateTimeZone.forID(timeZone));
 		
 		DateTime expiredTime = new DateTime();
-		expiredTime = expiredTime.plusDays(0-maxSaveday);
+		expiredTime = expiredTime.plusDays(0-maxSaveDay);
 		expiredTime = formatter.parseDateTime(expiredTime.toString(formatter));
 		
 		Pattern pattern = Pattern.compile(fileNamePattern);

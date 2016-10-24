@@ -84,9 +84,8 @@ public class Kafka extends BaseOutput {
 	@SuppressWarnings("rawtypes")
 	protected void emit(Map event) {
 		try {
-			producer.send(new KeyedMessage<>(topic, objectMapper.writeValueAsString(event).getBytes(encoding)));
+			producer.send(new KeyedMessage<>(topic, event.toString(), objectMapper.writeValueAsString(event).getBytes(encoding)));
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getMessage());
 		}
 	}

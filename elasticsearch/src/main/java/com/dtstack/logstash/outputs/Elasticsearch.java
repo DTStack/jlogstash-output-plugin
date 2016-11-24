@@ -49,18 +49,18 @@ public class Elasticsearch extends BaseOutput {
     private static final Logger logger = LoggerFactory.getLogger(Elasticsearch.class);
     
     @Required(required=true)
-    public static String index;
+    private static String index;
     
-    public static String indexTimezone = "UTC";
+    private static String indexTimezone = "UTC";
 
-    public static String documentId;
+    private static String documentId;
     
-    public static String documentType="logs";
+    private static String documentType="logs";
     
-    public static String cluster;
+    private static String cluster;
     
     @Required(required=true)
-    public static List<String> hosts;
+    private static List<String> hosts;
     
     private static boolean sniff=true;
     

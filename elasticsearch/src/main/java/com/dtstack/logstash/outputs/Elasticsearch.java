@@ -9,7 +9,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionRequest;
@@ -20,6 +19,7 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.Settings.Builder;
@@ -29,11 +29,11 @@ import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
 import com.dtstack.logstash.render.FreeMarkerRender;
 import com.dtstack.logstash.render.TemplateRender;
+
 
 
 /**
@@ -44,22 +44,23 @@ import com.dtstack.logstash.render.TemplateRender;
  * @author sishu.yss
  *
  */
+@SuppressWarnings("serial")
 public class Elasticsearch extends BaseOutput {
     private static final Logger logger = LoggerFactory.getLogger(Elasticsearch.class);
     
     @Required(required=true)
-    private static String index;
+    public static String index;
     
-	private static String indexTimezone = "UTC";
+    public static String indexTimezone = "UTC";
 
-    private static String documentId;
+    public static String documentId;
     
-    private static String documentType="logs";
+    public static String documentType="logs";
     
-    private static String cluster;
+    public static String cluster;
     
     @Required(required=true)
-    private static List<String> hosts;
+    public static List<String> hosts;
     
     private static boolean sniff=true;
     
@@ -70,9 +71,7 @@ public class Elasticsearch extends BaseOutput {
     private static int  flushInterval = 5;//seconds
     
     private static int	concurrentRequests = 1;
-    
-    private static int pingTimeout=5;//seconds
-    
+        
     private BulkProcessor bulkProcessor;
     
     private TransportClient esclient;
@@ -93,7 +92,8 @@ public class Elasticsearch extends BaseOutput {
     
     private ExecutorService executor;
     
-    public Elasticsearch(Map config) {
+    @SuppressWarnings("rawtypes")
+	public Elasticsearch(Map config) {
         super(config);
     }
 
@@ -113,11 +113,9 @@ public class Elasticsearch extends BaseOutput {
     }
 
 
-    @SuppressWarnings("unchecked")
     private void initESClient() throws NumberFormatException,
             UnknownHostException {
         Builder builder  = Settings.settingsBuilder().put("client.transport.sniff", sniff);  
-//        builder.put("client.transport.ping_timeout", pingTimeout);
         if(StringUtils.isNotBlank(cluster)){
         	builder.put("cluster.name", cluster);
         }
@@ -142,11 +140,10 @@ public class Elasticsearch extends BaseOutput {
         bulkProcessor = BulkProcessor
                 .builder(esclient, new BulkProcessor.Listener() {
 
-                    @Override
+                    @SuppressWarnings("rawtypes")
+					@Override
                     public void afterBulk(long arg0, BulkRequest arg1,
                                           BulkResponse arg2) {
-                    	
-//                      logger.info("bulk done with executionId: " + arg0);
                         List<ActionRequest> requests = arg1.requests();
                         int toberetry = 0;
                         int totalFailed = 0;
@@ -193,7 +190,8 @@ public class Elasticsearch extends BaseOutput {
 
                     }
 
-                    @Override
+                    @SuppressWarnings("rawtypes")
+					@Override
                     public void afterBulk(long arg0, BulkRequest arg1,
                                           Throwable arg2) {
                         logger.error("bulk got exception:", arg2);
@@ -219,7 +217,8 @@ public class Elasticsearch extends BaseOutput {
                 .setConcurrentRequests(concurrentRequests).build();
     }
 
-    protected void emit(Map event) {
+    @SuppressWarnings("rawtypes")
+	public void emit(Map event) {
         String _index = Formatter.format(event, index, indexTimezone);
         String _indexType = indexTypeRender.render(event);
         IndexRequest indexRequest;
@@ -303,22 +302,19 @@ public class Elasticsearch extends BaseOutput {
 	    	        logger.debug("Get cluster health:{} ", healthResponse.getStatus());
 	    	        isClusterOn.set(true);
 	    	    } catch(Throwable t) {
-	    	        if(t.getClass().toString().contains("NoNodeAvailableException")){//集群不可用
+	    	        if(t instanceof NoNodeAvailableException){//集群不可用
 	    	        	logger.error("the cluster no node avaliable.");
                     	isClusterOn.set(false);
                     }else{
                     	isClusterOn.set(true);
                     }
 	    	    }
-	    	    
 	    	    try {
 	    	        Thread.sleep(3000);//FIXME
 	    	    } catch (InterruptedException ie) { 
 	    	    	ie.printStackTrace(); 
 	    	    }
 	    	}
-		}
-    	
-    	
+		}	
     }
 }

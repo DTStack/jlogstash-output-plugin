@@ -51,7 +51,7 @@ public class Elasticsearch extends BaseOutput {
     @Required(required=true)
     private static String index;
     
-    private static String indexTimezone = "UTC";
+    private static String indexTimezone=null;
 
     private static String documentId;
     

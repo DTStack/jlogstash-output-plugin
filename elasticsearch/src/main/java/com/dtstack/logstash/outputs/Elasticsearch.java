@@ -249,6 +249,12 @@ public class Elasticsearch extends BaseOutput {
     	checkNeedWait();
     }
     
+    @Override
+    public void release(){
+    	if(bulkProcessor!=null)bulkProcessor.close();
+    	if(esclient!=null)esclient.close();	
+    }
+    
     public void checkNeedWait(){
     	
     	while(!isClusterOn.get()){//等待集群可用

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,11 +17,16 @@ import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
+import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.string.StringEncoder;
+import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timeout;
+import org.jboss.netty.util.Timer;
+import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +37,10 @@ import com.google.common.collect.Maps;
 /**
  * netty 客户端
  * FIXME 完善对ssl支持
+ * Reason: TODO ADD REASON(可选)
+ * Date: 2016年11月19日
+ * Company: www.dtstack.com
+ * @author xuchao
  *
  */
 public class Netty extends BaseOutput{
@@ -70,23 +80,18 @@ public class Netty extends BaseOutput{
 	@Override
 	protected void emit(Map event) {
 		
-		while(!client.isConnected()){
-			client.tryReconn();
-		}
-		
-		String msg = "";
-		if(format != null){
-			msg = replaceStr(event);
-		}else{
-			try {
+		try{
+			String msg = "";
+			if(format != null){
+				msg = replaceStr(event);
+			}else{
 				msg = objectMapper.writeValueAsString(event);
-			} catch (Exception e){
-				logger.error("", e);
-				return;
 			}
+			
+			client.write(msg + delimiter);
+		}catch(Exception e){
+			logger.error("", e);
 		}
-		
-		client.write(msg + delimiter);
 	}
 	
 	private String replaceStr(Map event){
@@ -132,38 +137,53 @@ public class Netty extends BaseOutput{
 		}
 	}
 	
-	public static void main(String[] args) {
-		Netty netty = new Netty(new HashMap<String, String>());
-		netty.host = "localhost";
-		netty.port = 9111;
-		netty.format = "${HOSTNAME}${msg}";
-		Map<String, String> event = Maps.newHashMap();
-		event.put("HOSTNAME", "daxu11");
-		event.put("msg", "ddddd");
-		
-		netty.prepare();
-		netty.emit(event);
-		System.out.println("stop");
-		
-		netty.emit(event);
-	}
 }
 
 class NettyClientHandler extends SimpleChannelHandler {
 	
+	private static final int CONN_DELAY = 3;
+	
 	private NettyClient client;
 	
-	public NettyClientHandler(NettyClient client){
+	final Timer timer;
+	
+	public NettyClientHandler(NettyClient client, Timer timer){
 		this.client = client;
+		this.timer = timer;
 	}
 	
 	private static final Logger logger = LoggerFactory.getLogger(NettyClientHandler.class);
 	
 	@Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-	        logger.error("netty io error: {}",e.getCause());
-	        client.chgState(false);
-    }	
+	    logger.error("", e);    
+    }
+
+	@Override
+	public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
+			throws Exception {
+		logger.warn("channel closed.do connect after:{} seconds.", CONN_DELAY);
+		//重连
+		timer.newTimeout(new TimerTask() {
+			
+			@Override
+			public void run(Timeout timeout) throws Exception {
+				ChannelFuture channelfuture = client.getBootstrap().connect();
+				client.setChannel(channelfuture);
+			}
+		}, CONN_DELAY, TimeUnit.SECONDS);
+	}
+
+	@Override
+	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e)
+			throws Exception {
+		logger.warn("connect to:{} success.", getRemoteAddress());
+	}	
+	
+	InetSocketAddress getRemoteAddress() {
+		return (InetSocketAddress) client.getBootstrap().getOption("remoteAddress");
+	}
+	
 }
 
 class NettyClient{
@@ -174,14 +194,14 @@ class NettyClient{
 	
 	private String host;
 	
-	private Channel channel;
+	private volatile Channel channel;
 	
-	private ClientBootstrap bootstrap;
+	private volatile ClientBootstrap bootstrap;
+	
+	private final Timer timer = new HashedWheelTimer();
 	
 	public Object lock = new Object();
-	
-	private AtomicBoolean isConnected = new AtomicBoolean(false);
-	
+				
 	public NettyClient(String host, int port){
 		this.host = host;
 		this.port = port;
@@ -194,7 +214,8 @@ class NettyClient{
 				Executors.newCachedThreadPool()));
 		bootstrap.setOption("tcpNoDelay", false);
 		bootstrap.setOption("keepAlive", true);
-		final NettyClientHandler handler = new NettyClientHandler(this);
+		
+		final NettyClientHandler handler = new NettyClientHandler(this, timer);
 		
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			
@@ -205,53 +226,40 @@ class NettyClient{
 				return pipeline;
 			}
 		});
-		ChannelFuture future;
+		
+		bootstrap.setOption("remoteAddress", new InetSocketAddress(host, port));
 		try {
-			future = bootstrap.connect(new InetSocketAddress(host, port)).sync();
-			if(future.isSuccess()){
-				logger.warn("----connet to server success----.");
-			}
-			
+			ChannelFuture future = bootstrap.connect().sync();
 			channel = future.getChannel();
-			chgState(true);
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			logger.error("", e);
 			bootstrap.releaseExternalResources();
+			System.exit(-1);//第一次连接出现异常直接退出,不走重连
 		}
-	}
-	
-	public void closeConn(){
-		bootstrap.releaseExternalResources();
-	}
-	
-	public void chgState(boolean currState){
-		isConnected.compareAndSet(!currState, currState);
 	}
 	
 	public boolean write(String msg){
-		//如果channel 关闭或者不可用用需要重连
-		if(!isConnected.get()){
-			return false;
+		
+		boolean canWrite = channel.isConnected() && channel.isWritable();
+		while(!canWrite){
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+				logger.error("", e);
+			}
+			canWrite = channel.isConnected() && channel.isWritable();
 		}
 		
 		channel.write(msg);
-		
 		return true;
 	}
-	
-	public boolean isConnected(){
-		return isConnected.get();
+
+	public ClientBootstrap getBootstrap() {
+		return bootstrap;
 	}
-	
-	public void tryReconn(){
-		bootstrap.releaseExternalResources();
-		logger.warn("---reconnect after 5 second");
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			logger.error("", e);
-		}
-		connect();
+
+	public void setChannel(ChannelFuture channelfuture) {
+		this.channel = channelfuture.getChannel();
 	}
 	
 }

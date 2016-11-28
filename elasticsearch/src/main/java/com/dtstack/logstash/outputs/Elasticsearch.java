@@ -20,7 +20,9 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.Settings.Builder;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
@@ -299,11 +301,15 @@ public class Elasticsearch extends BaseOutput {
 	    	        logger.debug("getting es cluster health.");
 	    	        ActionFuture<ClusterHealthResponse> healthFuture = transportClient.admin().cluster().health(Requests.clusterHealthRequest());
 	    	        ClusterHealthResponse healthResponse = healthFuture.get(5, TimeUnit.SECONDS);
-	    	        logger.debug("Get num of node:{}", healthResponse.getNumberOfNodes());
-	    	        logger.debug("Get cluster health:{} ", healthResponse.getStatus());
+	    	        
+	    	        if(healthResponse.getStatus() == ClusterHealthStatus.RED){//es集群处于不健康状态给提示
+	    	        	logger.error("elasticsearch info num of node:{}", healthResponse.getNumberOfNodes());
+	 	    	        logger.error("elasticsearch info cluster health:{} ", healthResponse.getStatus());
+	    	        }
+	    	        
 	    	        isClusterOn.set(true);
 	    	    } catch(Throwable t) {
-	    	        if(t.getClass().toString().contains("NoNodeAvailableException")){//集群不可用
+	    	        if(t instanceof NoNodeAvailableException){//集群不可用
 	    	        	logger.error("the cluster no node avaliable.");
                     	isClusterOn.set(false);
                     }else{

@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionRequest;
@@ -30,6 +31,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
 import com.dtstack.logstash.render.FreeMarkerRender;
@@ -248,6 +250,13 @@ public class Elasticsearch5 extends BaseOutput {
     	this.bulkProcessor.add((IndexRequest)msg);
     	needDelayTime.set(0);
     	checkNeedWait();
+    }
+    
+    
+    @Override
+    public void release(){
+    	if(bulkProcessor!=null)bulkProcessor.close();
+    	if(esclient!=null)esclient.close();	
     }
     
     public void checkNeedWait(){

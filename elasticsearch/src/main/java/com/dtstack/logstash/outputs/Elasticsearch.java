@@ -253,7 +253,6 @@ public class Elasticsearch extends BaseOutput {
     @Override
     public void release(){
     	if(bulkProcessor!=null)bulkProcessor.close();
-    	if(esclient!=null)esclient.close();	
     }
     
     public void checkNeedWait(){

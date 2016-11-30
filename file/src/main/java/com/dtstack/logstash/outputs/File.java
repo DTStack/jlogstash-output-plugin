@@ -3,18 +3,15 @@ package com.dtstack.logstash.outputs;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
 import com.google.common.collect.Lists;
@@ -28,6 +25,7 @@ import com.google.common.collect.Maps;
  * @author sishu.yss
  *
  */
+@SuppressWarnings("serial")
 public class File extends BaseOutput{
 	
     private static Logger logger = LoggerFactory.getLogger(File.class);
@@ -36,11 +34,7 @@ public class File extends BaseOutput{
 	private static String path;
 	
 	private static String codec="json_lines";
-	
-//	private static boolean createIfDeleted=true; 
-	
-	private static int flushInterval = 0;//时间间隔
-	
+			
 	private static ObjectMapper objectMapper = new ObjectMapper();
 		
 	private List<String> codecol = Lists.newCopyOnWriteArrayList();
@@ -53,15 +47,11 @@ public class File extends BaseOutput{
 	
 	private ExecutorService executor = Executors.newSingleThreadExecutor();
 	
-	private static int interval =30;//seconds 
+	private static int interval =5;//seconds
 	
 	private static String timeZone = "UTC";
 
-	
-//	private static ReentrantLock lock = new ReentrantLock();
-    
-
-    
+	    
 	public File(Map config) {
 		super(config);
 		// TODO Auto-generated constructor stub
@@ -94,10 +84,12 @@ public class File extends BaseOutput{
 		public void run() {
 			// TODO Auto-generated method stub
 			try{
-				Thread.sleep(interval*1000);
-				Set<Map.Entry<String,BufferedWriter>> sets =msf.entrySet();
-				for(Map.Entry<String,BufferedWriter> entry :sets){
-					entry.getValue().flush();
+				while(true){
+					Thread.sleep(interval*1000);
+					Set<Map.Entry<String,BufferedWriter>> sets =msf.entrySet();
+					for(Map.Entry<String,BufferedWriter> entry :sets){
+						entry.getValue().flush();
+					}
 				}
 			}catch(Exception e){
 				logger.error(e.getMessage());
@@ -110,17 +102,28 @@ public class File extends BaseOutput{
 		// TODO Auto-generated method stub
 		try {
 			String message =formatMessage(event)+System.getProperty("line.separator");
-			if(flushInterval==0){
 				BufferedWriter bw =getFileWriter(event);
-				bw.write(message);
-			}
-		
+				bw.write(message);		
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			logger.error("file emit fail...", e);
 		}
 	}
 	
+	@Override
+	public void release(){
+		try{
+			if(msf!=null){
+				Set<Map.Entry<String,BufferedWriter>> sets =msf.entrySet();
+				for(Map.Entry<String,BufferedWriter> entry :sets){
+					entry.getValue().close();
+				}
+			}
+		}catch(Exception e){
+			logger.error("output file release error:{}",e.getMessage());
+		}
+	}
+
 	private String formatMessage(Map event) throws Exception{
 	  if(codec.startsWith("line")){
 			StringBuilder sb = new StringBuilder();

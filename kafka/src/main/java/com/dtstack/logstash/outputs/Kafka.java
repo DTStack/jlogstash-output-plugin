@@ -5,12 +5,12 @@ import java.util.Properties;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
-import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.dtstack.logstash.annotation.Required;
+import com.dtstack.logstash.render.Formatter;
+import com.google.common.collect.Maps;
 
 /**
  * 
@@ -20,6 +20,7 @@ import com.dtstack.logstash.annotation.Required;
  * @author sishu.yss
  *
  */
+@SuppressWarnings("serial")
 public class Kafka extends BaseOutput {
 	
 	private static final Logger logger = LoggerFactory.getLogger(Kafka.class);
@@ -27,66 +28,74 @@ public class Kafka extends BaseOutput {
 	private static ObjectMapper objectMapper = new ObjectMapper();
 	
 	@SuppressWarnings("rawtypes")
-	private Producer producer;
+	private Map<String,Producer> poducers = Maps.newConcurrentMap(); 
 	
-	private static String encoding="utf-8";
+	private Properties props;
+	
+	private ProducerConfig pconfig;
+	
+	private String encoding="utf-8";
+	
+	private String timezone=null;
 	
 	@Required(required=true)
-	private static String topic;
+	private String topic;
 	
 	@Required(required=true)
-	private static String brokerList;
+	private String brokerList;
 	
-	private static String keySerializer="kafka.serializer.StringEncoder";
+	private Map<String,String> producerSettings;
 	
-	private static String valueSerializer="kafka.serializer.StringEncoder";	
-	
-	private static String partitionerClass = "kafka.producer.DefaultPartitioner";
-	
-	private static String producerType ="sync";//sync async
-	
-	private static String compressionCodec = "none";//gzip,snappy,lz4,none
-	
-	private static String clientId ="";
-	
-	private static Long batchNum = 0l;
-	
-	private static Integer requestRequiredAcks=1;
-
+	@SuppressWarnings("rawtypes")
 	public Kafka(Map config) {
 		super(config);
 	}
-
+	
+	/**
+	 * default
+	 * 
+	 * props.put("key.serializer.class", "kafka.serializer.StringEncoder");
+	 * props.put("value.serializer.class", "kafka.serializer.StringEncoder");
+	 * props.put("partitioner.class", "kafka.producer.DefaultPartitioner");
+	 * props.put("producer.type", "sync");
+	 * props.put("compression.codec", "none");
+	 * props.put("request.required.acks", "1");
+	 * props.put("batch.num.messages", "1024");
+	 * props.put("client.id", "");			
+	 */
 	public void prepare() {
 		try{
-			Properties props = new Properties();
+			if(props==null){
+				props = new Properties();
+			}
+			if(producerSettings!=null){
+				props.putAll(producerSettings);
+			}
 			props.put("metadata.broker.list",brokerList);
-			props.put("key.serializer.class", keySerializer);
-			props.put("value.serializer.class", valueSerializer);
-			props.put("partitioner.class", partitionerClass);
-			props.put("producer.type", producerType);
-			props.put("compression.codec", compressionCodec);
-			props.put("request.required.acks", String.valueOf(requestRequiredAcks));
-			if(StringUtils.isNotBlank(clientId)){
-				props.put("client.id", clientId);			
+			if(pconfig==null){
+				pconfig = new ProducerConfig(props);
 			}
-			if(batchNum>0){
-				props.put("batch.num.messages", String.valueOf(batchNum));
-			}
-			ProducerConfig pconfig = new ProducerConfig(props);
-			producer = new Producer<>(pconfig);
 		}catch(Exception e){
 			logger.error(e.getMessage());
 			System.exit(1);
 		}
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void emit(Map event) {
 		try {
-			producer.send(new KeyedMessage<>(topic, event.toString(), objectMapper.writeValueAsString(event).getBytes(encoding)));
+			String tp = Formatter.format(event, topic, timezone);
+			Producer producer = poducers.get(tp);
+			if(producer==null){
+				producer = new Producer(pconfig);
+				poducers.put(tp,producer);
+			}
+			producer.send(new KeyedMessage<>(tp, event.toString(), objectMapper.writeValueAsString(event).getBytes(encoding)));
 		} catch (Exception e) {
 			logger.error(e.getMessage());
 		}
 	}
+	
+	 public static void main(String[] args){
+	 }
 }

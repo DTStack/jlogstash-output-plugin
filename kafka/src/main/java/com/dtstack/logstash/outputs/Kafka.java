@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
-import com.google.common.collect.Maps;
 
 /**
  * 
@@ -27,12 +26,11 @@ public class Kafka extends BaseOutput {
 
 	private static ObjectMapper objectMapper = new ObjectMapper();
 	
-	@SuppressWarnings("rawtypes")
-	private Map<String,Producer> poducers = Maps.newConcurrentMap(); 
-	
 	private Properties props;
 	
 	private ProducerConfig pconfig;
+	
+	private Producer producer;
 	
 	private String encoding="utf-8";
 	
@@ -75,6 +73,9 @@ public class Kafka extends BaseOutput {
 			if(pconfig==null){
 				pconfig = new ProducerConfig(props);
 			}
+			if(producer==null){
+				producer= new Producer(pconfig);
+			}
 		}catch(Exception e){
 			logger.error(e.getMessage());
 			System.exit(1);
@@ -85,11 +86,6 @@ public class Kafka extends BaseOutput {
 	protected void emit(Map event) {
 		try {
 			String tp = Formatter.format(event, topic, timezone);
-			Producer producer = poducers.get(tp);
-			if(producer==null){
-				producer = new Producer(pconfig);
-				poducers.put(tp,producer);
-			}
 			producer.send(new KeyedMessage<>(tp, event.toString(), objectMapper.writeValueAsString(event).getBytes(encoding)));
 		} catch (Exception e) {
 			logger.error(e.getMessage());

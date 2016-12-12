@@ -148,7 +148,7 @@ public class Elasticsearch5 extends BaseOutput {
                     public void afterBulk(long arg0, BulkRequest arg1,
                                           BulkResponse arg2) {
                     	
-                        List<ActionRequest<?>> requests = arg1.requests();
+                        List<ActionRequest> requests = arg1.requests();
                         int toberetry = 0;
                         int totalFailed = 0;
                         for (BulkItemResponse item : arg2.getItems()) {
@@ -199,7 +199,7 @@ public class Elasticsearch5 extends BaseOutput {
                                           Throwable arg2) {
                         logger.error("bulk got exception:", arg2);
                         
-                        for(ActionRequest<?> request : arg1.requests()){
+                        for(ActionRequest request : arg1.requests()){
                         	addFailedMsg(request);
                         }
                         

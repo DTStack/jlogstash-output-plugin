@@ -13,7 +13,6 @@ public class WebHdfs extends BaseOutput{
 	@Override
 	public void prepare() {
 		// TODO Auto-generated method stub
-		
 	}
 
 	@Override

@@ -1,13 +1,18 @@
 package com.dtstack.logstash.outputs;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
 
@@ -39,6 +44,10 @@ public class Kafka extends BaseOutput {
 	@Required(required=true)
 	private String topic;
 	
+	private Map<String,Map<String,Object>> topicSelect;
+	
+	private Set<Map.Entry<String,Map<String,Object>>> entryTopicSelect;
+
 	@Required(required=true)
 	private String brokerList;
 	
@@ -51,7 +60,6 @@ public class Kafka extends BaseOutput {
 	
 	/**
 	 * default
-	 * 
 	 * props.put("key.serializer.class", "kafka.serializer.StringEncoder");
 	 * props.put("value.serializer.class", "kafka.serializer.StringEncoder");
 	 * props.put("partitioner.class", "kafka.producer.DefaultPartitioner");
@@ -63,6 +71,10 @@ public class Kafka extends BaseOutput {
 	 */
 	public void prepare() {
 		try{
+			if(topicSelect!=null){
+				entryTopicSelect = topicSelect.entrySet();
+			}
+			
 			if(props==null){
 				props = new Properties();
 			}
@@ -85,13 +97,27 @@ public class Kafka extends BaseOutput {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void emit(Map event) {
 		try {
-			String tp = Formatter.format(event, topic, timezone);
+			String tp = null;
+			if(entryTopicSelect != null){
+				for(Map.Entry<String,Map<String,Object>> entry:entryTopicSelect){
+					String key = entry.getKey();
+					Map<String,Object> value = entry.getValue();
+					List<String> equals = (List<String>) value.get("equal");
+					if(equals.contains(event.get(key))){
+						tp = Formatter.format(event, (String)value.get("topic"), timezone);
+						break;
+					}
+				}
+			}
+			if(tp==null){
+				tp = Formatter.format(event, topic, timezone);
+			}
 			producer.send(new KeyedMessage<>(tp, event.toString(), objectMapper.writeValueAsString(event).getBytes(encoding)));
 		} catch (Exception e) {
 			logger.error(e.getMessage());
 		}
 	}
-	
 	 public static void main(String[] args){
+		 
 	 }
 }

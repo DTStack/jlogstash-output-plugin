@@ -49,8 +49,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.render.Formatter;
-import com.dtstack.logstash.render.FreeMarkerRender;
-import com.dtstack.logstash.render.TemplateRender;
+//import com.dtstack.logstash.render.FreeMarkerRender;
+//import com.dtstack.logstash.render.TemplateRender;
 
 
 
@@ -94,9 +94,9 @@ public class Elasticsearch extends BaseOutput {
     
     private TransportClient esclient;
     
-    private TemplateRender indexTypeRender =null;
-    
-    private TemplateRender idRender =null;
+//    private TemplateRender indexTypeRender =null;
+//    
+//    private TemplateRender idRender =null;
     
     private AtomicLong sendReqs = new AtomicLong(0);
     
@@ -119,10 +119,10 @@ public class Elasticsearch extends BaseOutput {
     	
     	try {
     		executor = Executors.newSingleThreadExecutor();
-    		if (StringUtils.isNotBlank(documentId)) {
-                idRender = new FreeMarkerRender(documentId,documentId);
-            }
-             indexTypeRender = new FreeMarkerRender(documentType,documentType);
+//    		if (StringUtils.isNotBlank(documentId)) {
+//                idRender = new FreeMarkerRender(documentId,documentId);
+//            }
+//             indexTypeRender = new FreeMarkerRender(documentType,documentType);
              this.initESClient();
             } catch (Exception e) {
                 logger.error(e.getMessage());
@@ -238,14 +238,17 @@ public class Elasticsearch extends BaseOutput {
     @SuppressWarnings("rawtypes")
 	public void emit(Map event) {
         String _index = Formatter.format(event, index, indexTimezone);
-        String _indexType = indexTypeRender.render(event);
+        String _indexType = Formatter.format(event, documentType, indexTimezone);
         IndexRequest indexRequest;
-        if (idRender == null) {
+        if (StringUtils.isBlank(documentId)) {
             indexRequest = new IndexRequest(_index, _indexType).source(event);
         } else {
-            String _id = idRender.render(event);
-            indexRequest = new IndexRequest(_index, _indexType, _id)
-                    .source(event);
+            String _id = Formatter.format(event, documentId, indexTimezone);
+            if(Formatter.isFormat(_id)){
+                indexRequest = new IndexRequest(_index, _indexType).source(event);
+            }else{
+                indexRequest = new IndexRequest(_index, _indexType, _id).source(event);
+            }
         }
         this.bulkProcessor.add(indexRequest);
         checkNeedWait();

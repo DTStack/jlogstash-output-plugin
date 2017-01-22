@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dtstack.logstash.outputs;
+package com.dtstack.jlogstash.outputs;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import com.aliyun.odps.Odps;
 import com.aliyun.odps.Column;
 import com.aliyun.odps.PartitionSpec;
@@ -36,6 +37,7 @@ import com.aliyun.odps.tunnel.TableTunnel;
 import com.aliyun.odps.tunnel.TableTunnel.UploadSession;
 import com.aliyun.odps.tunnel.TunnelException;
 import com.dtstack.logstash.annotation.Required;
+import com.dtstack.logstash.outputs.BaseOutput;
 
 /**
  * 

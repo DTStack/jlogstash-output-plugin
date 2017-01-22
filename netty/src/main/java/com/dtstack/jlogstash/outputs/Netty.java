@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dtstack.logstash.outputs;
+package com.dtstack.jlogstash.outputs;
 
 import java.net.InetSocketAddress;
 import java.util.Map;

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dtstack.logstash.outputs;
+package com.dtstack.jlogstash.outputs;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.dtstack.logstash.annotation.Required;
 import com.dtstack.logstash.date.UnixMSParser;
+import com.dtstack.logstash.outputs.BaseOutput;
 import com.dtstack.logstash.render.Formatter;
 import com.google.common.collect.Maps;
 

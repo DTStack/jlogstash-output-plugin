@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.util.Map;
 
 import com.dtstack.jlogstash.outputs.Elasticsearch5;
-import com.dtstack.logstash.render.Formatter;
-import com.dtstack.logstash.render.FreeMarkerRender;
-import com.dtstack.logstash.render.TemplateRender;
+import com.dtstack.jlogstash.render.Formatter;
+import com.dtstack.jlogstash.render.FreeMarkerRender;
+import com.dtstack.jlogstash.render.TemplateRender;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 

@@ -31,9 +31,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.dtstack.logstash.annotation.Required;
-import com.dtstack.logstash.outputs.BaseOutput;
-import com.dtstack.logstash.render.Formatter;
+import com.dtstack.jlogstash.annotation.Required;
+import com.dtstack.jlogstash.outputs.BaseOutput;
+import com.dtstack.jlogstash.render.Formatter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 

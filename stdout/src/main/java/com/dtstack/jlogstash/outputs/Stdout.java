@@ -19,12 +19,10 @@ package com.dtstack.jlogstash.outputs;
 
 import java.util.Map;
 import java.util.Set;
-
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.dtstack.logstash.outputs.BaseOutput;
+import com.dtstack.jlogstash.outputs.BaseOutput;
 
 
 /**

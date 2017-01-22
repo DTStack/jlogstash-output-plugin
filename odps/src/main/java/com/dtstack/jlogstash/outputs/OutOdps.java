@@ -36,8 +36,8 @@ import com.aliyun.odps.data.RecordWriter;
 import com.aliyun.odps.tunnel.TableTunnel;
 import com.aliyun.odps.tunnel.TableTunnel.UploadSession;
 import com.aliyun.odps.tunnel.TunnelException;
-import com.dtstack.logstash.annotation.Required;
-import com.dtstack.logstash.outputs.BaseOutput;
+import com.dtstack.jlogstash.annotation.Required;
+import com.dtstack.jlogstash.outputs.BaseOutput;
 
 /**
  * 

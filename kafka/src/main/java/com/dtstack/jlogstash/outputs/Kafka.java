@@ -53,21 +53,21 @@ public class Kafka extends BaseOutput {
 	
 	private ProducerConfig pconfig;
 	
-	private Producer producer;
+	private Producer<String, byte[]> producer;
 	
-	private String encoding="utf-8";
+	private static String encoding = "utf-8";
 	
-	private String timezone=null;
+	private static String timezone;
 	
 	@Required(required=true)
-	private String topic;
+	private static String topic;
 	
-	private Map<String,Map<String,Object>> topicSelect;
+	private static Map<String,Map<String,Object>> topicSelect;
 	
 	private Set<Map.Entry<String,Map<String,Object>>> entryTopicSelect;
 
 	@Required(required=true)
-	private String brokerList;
+	private static String brokerList;
 	
 	private Map<String,String> producerSettings;
 	
@@ -104,7 +104,7 @@ public class Kafka extends BaseOutput {
 				pconfig = new ProducerConfig(props);
 			}
 			if(producer==null){
-				producer= new Producer(pconfig);
+				producer= new Producer<String, byte[]>(pconfig);
 			}
 		}catch(Exception e){
 			logger.error(e.getMessage());

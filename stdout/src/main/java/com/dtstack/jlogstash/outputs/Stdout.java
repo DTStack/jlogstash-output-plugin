@@ -31,7 +31,6 @@ import com.dtstack.jlogstash.outputs.BaseOutput;
  * Date: 2016年8月31日 下午1:36:42
  * Company: www.dtstack.com
  * @author sishu.yss
- * @param <E>
  *
  */
 @SuppressWarnings("serial")

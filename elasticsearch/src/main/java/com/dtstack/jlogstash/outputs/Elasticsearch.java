@@ -172,16 +172,14 @@ public class Elasticsearch extends BaseOutput {
                                     case TOO_MANY_REQUESTS:
                                     case SERVICE_UNAVAILABLE:
                                         if (toberetry == 0) {
-                                            logger.error("bulk has failed item which NEED to retry");
-                                            logger.error(item.getFailureMessage());
+                                            logger.error("sevice_unavaible cause {}:{}",item.getIndex(),item.getFailureMessage());
                                         }
                                         toberetry++;
                                         addFailedMsg(requests.get(item.getItemId()));
                                         break;
                                     default:
                                         if (totalFailed == 0) {
-                                            logger.error("bulk has failed item which do NOT need to retry");
-                                            logger.error(item.getFailureMessage());
+                                            logger.error("data formate cause {}:{}",item.getIndex(),item.getFailureMessage());
                                         }
                                         break;
                                 }

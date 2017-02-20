@@ -180,7 +180,7 @@ public class Elasticsearch5 extends BaseOutput {
                                         break;
                                     default:
                                         if (totalFailed == 0) {
-                                            logger.error("data formate cause {}:{}",item.getIndex(),item.getFailureMessage());
+                                            logger.error("data formate cause {}:{}:{}",item.getIndex(),((IndexRequest)requests.get(item.getItemId())).sourceAsMap(),item.getFailureMessage());
                                         }
                                         break;
                                 }

@@ -94,10 +94,6 @@ public class Elasticsearch5 extends BaseOutput {
     
     private TransportClient esclient;
     
-//    private TemplateRender indexTypeRender =null;
-//    
-//    private TemplateRender idRender =null;
-    
     private AtomicLong sendReqs = new AtomicLong(0);
     
     private AtomicLong ackReqs = new AtomicLong(0);
@@ -116,13 +112,8 @@ public class Elasticsearch5 extends BaseOutput {
     }
 
     public void prepare() {
-    	
     	try {
     		executor = Executors.newSingleThreadExecutor();
-//    		if (StringUtils.isNotBlank(documentId)) {
-//                idRender = new FreeMarkerRender(documentId,documentId);
-//            }
-//             indexTypeRender = new FreeMarkerRender(documentType,documentType);
              this.initESClient();
             } catch (Exception e) {
                 logger.error(e.getMessage());
@@ -171,9 +162,13 @@ public class Elasticsearch5 extends BaseOutput {
                             if (item.isFailed()) {
                                 switch (item.getFailure().getStatus()) {
                                     case TOO_MANY_REQUESTS:
+                                        if (totalFailed == 0) {
+                                            logger.error("too many request {}:{}",item.getIndex(),item.getFailureMessage());
+                                        } 
+                                        break;
                                     case SERVICE_UNAVAILABLE:
                                         if (toberetry == 0) {
-                                            logger.error("sevice_unavaible cause {}:{}",item.getIndex(),item.getFailureMessage());
+                                            logger.error("sevice unavaible cause {}:{}",item.getIndex(),item.getFailureMessage());
                                         }
                                         toberetry++;
                                         addFailedMsg(requests.get(item.getItemId()));
@@ -184,7 +179,6 @@ public class Elasticsearch5 extends BaseOutput {
                                         }
                                         break;
                                 }
-
                                 totalFailed++;
                             }
                         }

@@ -100,7 +100,7 @@ public class Elasticsearch5 extends BaseOutput {
    
     private int maxLag = bulkActions;
     
-    private AtomicLong needDelayTime = new AtomicLong(0l);
+//    private AtomicLong needDelayTime = new AtomicLong(0l);
     
     private AtomicBoolean isClusterOn = new AtomicBoolean(true);
     
@@ -192,13 +192,13 @@ public class Elasticsearch5 extends BaseOutput {
                             logger.debug("no failed docs");
                         }
 
-                        if (toberetry > 0) {
-                        	  logger.info("sleep " + toberetry / 2
-                                      + "millseconds after bulk failure");
-                              setDelayTime(toberetry / 2);
-                        } else {
-                            logger.debug("no docs need to retry");
-                        }
+//                        if (toberetry > 0) {
+//                        	  logger.info("sleep " + toberetry / 2
+//                                      + "millseconds after bulk failure");
+//                              setDelayTime(toberetry / 2);
+//                        } else {
+//                            logger.debug("no docs need to retry");
+//                        }
 
                     }
 
@@ -212,7 +212,7 @@ public class Elasticsearch5 extends BaseOutput {
                         }
                         
                         addAckSeqs(arg1.requests().size());
-                        setDelayTime(1000);
+//                        setDelayTime(1000);
                     }
 
                     @Override
@@ -250,16 +250,16 @@ public class Elasticsearch5 extends BaseOutput {
     @Override
     public void sendFailedMsg(Object msg){
     	
-    	if(needDelayTime.get() >  0){
-    		try {
-				Thread.sleep(needDelayTime.get());
-			} catch (InterruptedException e) {
-				logger.error("", e);
-			}
-    	}
+//    	if(needDelayTime.get() >  0){//不需要sleep影响性能
+//    		try {
+//				Thread.sleep(needDelayTime.get());
+//			} catch (InterruptedException e) {
+//				logger.error("", e);
+//			}
+//    	}
     	
     	this.bulkProcessor.add((IndexRequest)msg);
-    	needDelayTime.set(0);
+//    	needDelayTime.set(0);
     	checkNeedWait();
     }
     
@@ -296,11 +296,11 @@ public class Elasticsearch5 extends BaseOutput {
     	ackReqs.addAndGet(num);
     }
     
-    public void setDelayTime(long delayTime){
-    	if(delayTime > needDelayTime.get()){
-    		needDelayTime.set(delayTime);
-    	}
-    }
+//    public void setDelayTime(long delayTime){
+//    	if(delayTime > needDelayTime.get()){
+//    		needDelayTime.set(delayTime);
+//    	}
+//    }
     
     class ClusterMonitor implements Runnable{
     	

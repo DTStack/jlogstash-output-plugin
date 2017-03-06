@@ -165,12 +165,13 @@ public class Elasticsearch5 extends BaseOutput {
                                         if (totalFailed == 0) {
                                             logger.error("too many request {}:{}",item.getIndex(),item.getFailureMessage());
                                         } 
+                                        addFailedMsg(requests.get(item.getItemId()));
                                         break;
                                     case SERVICE_UNAVAILABLE:
                                         if (toberetry == 0) {
                                             logger.error("sevice unavaible cause {}:{}",item.getIndex(),item.getFailureMessage());
                                         }
-                                        toberetry++;
+//                                        toberetry++;
                                         addFailedMsg(requests.get(item.getItemId()));
                                         break;
                                     default:
@@ -272,17 +273,16 @@ public class Elasticsearch5 extends BaseOutput {
     public void checkNeedWait(){
     	while(!isClusterOn.get()){//等待集群可用
     		try {
-				Thread.sleep(3000);//FIXME
+    			logger.warn("wait cluster avaliable...");
+				Thread.sleep(1000);//FIXME
 			} catch (InterruptedException e) {
 				logger.error("", e);
 			}
     	}
-    	
     	sendReqs.incrementAndGet();
     	if(sendReqs.get() - ackReqs.get() < maxLag){
     		return;
     	}
-    	
     	while(sendReqs.get() - ackReqs.get() > maxLag){
     		try {
 				Thread.sleep(1000);
@@ -319,18 +319,17 @@ public class Elasticsearch5 extends BaseOutput {
 	    	        ClusterHealthResponse healthResponse = healthFuture.get(5, TimeUnit.SECONDS);
 	    	        logger.debug("Get num of node:{}", healthResponse.getNumberOfNodes());
 	    	        logger.debug("Get cluster health:{} ", healthResponse.getStatus());
-	    	        isClusterOn.set(true);
+	    	        isClusterOn.getAndSet(true);
 	    	    } catch(Throwable t) {
 	    	        if(t instanceof NoNodeAvailableException){//集群不可用
 	    	        	logger.error("the cluster no node avaliable.");
-                    	isClusterOn.set(false);
+	    	        	isClusterOn.getAndSet(false);
                     }else{
-                    	isClusterOn.set(true);
+	    	        	isClusterOn.getAndSet(true);
                     }
 	    	    }
-	    	    
 	    	    try {
-	    	        Thread.sleep(3000);//FIXME
+	    	        Thread.sleep(1000);//FIXME
 	    	    } catch (InterruptedException ie) { 
 	    	    	ie.printStackTrace(); 
 	    	    }

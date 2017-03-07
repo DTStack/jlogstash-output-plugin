@@ -285,6 +285,7 @@ public class Elasticsearch5 extends BaseOutput {
     	}
     	while(sendReqs.get() - ackReqs.get() > maxLag){
     		try {
+    			logger.warn("wait sendReqs less than ackReqs...");
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				logger.error("", e);

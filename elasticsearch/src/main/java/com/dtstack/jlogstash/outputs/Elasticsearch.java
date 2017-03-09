@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+//import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.ActionFuture;
@@ -95,11 +95,11 @@ public class Elasticsearch extends BaseOutput {
     
     private TransportClient esclient;
     
-    private AtomicLong sendReqs = new AtomicLong(0);
-    
-    private AtomicLong ackReqs = new AtomicLong(0);
-   
-    private int maxLag = bulkActions;
+//    private AtomicLong sendReqs = new AtomicLong(0);
+//    
+//    private AtomicLong ackReqs = new AtomicLong(0);
+//   
+//    private int maxLag = bulkActions;
     
 //    private AtomicLong needDelayTime = new AtomicLong(0l);
     
@@ -184,7 +184,7 @@ public class Elasticsearch extends BaseOutput {
                             }
                         }
                         
-                        addAckSeqs(requests.size());
+//                        addAckSeqs(requests.size());
 
                         if (totalFailed > 0) {
                             logger.info(totalFailed + " doc failed, "
@@ -213,7 +213,7 @@ public class Elasticsearch extends BaseOutput {
                         	addFailedMsg(request);
                         }
                         
-                        addAckSeqs(arg1.requests().size());
+//                        addAckSeqs(arg1.requests().size());
 //                        setDelayTime(1000);
                     }
 
@@ -279,24 +279,24 @@ public class Elasticsearch extends BaseOutput {
 				logger.error("", e);
 			}
     	}
-    	
-    	sendReqs.incrementAndGet();
-    	if(sendReqs.get() - ackReqs.get() < maxLag){
-    		return;
-    	}
-    	
-    	while(sendReqs.get() - ackReqs.get() > maxLag){
-    		try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				logger.error("", e);
-			}
-    	}
+//    	
+//    	sendReqs.incrementAndGet();
+//    	if(sendReqs.get() - ackReqs.get() < maxLag){
+//    		return;
+//    	}
+//    	
+//    	while(sendReqs.get() - ackReqs.get() > maxLag){
+//    		try {
+//				Thread.sleep(1000);
+//			} catch (InterruptedException e) {
+//				logger.error("", e);
+//			}
+//    	}
     }
     
-    public void addAckSeqs(int num){
-    	ackReqs.addAndGet(num);
-    }
+//    public void addAckSeqs(int num){
+//    	ackReqs.addAndGet(num);
+//    }
     
 //    public void setDelayTime(long delayTime){
 //    	if(delayTime > needDelayTime.get()){

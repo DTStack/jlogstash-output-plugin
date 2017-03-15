@@ -18,12 +18,14 @@
 package com.dtstack.jlogstash.outputs;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.aliyun.odps.Odps;
 import com.aliyun.odps.Column;
@@ -32,12 +34,14 @@ import com.aliyun.odps.TableSchema;
 import com.aliyun.odps.account.Account;
 import com.aliyun.odps.account.AliyunAccount;
 import com.aliyun.odps.data.Record;
-import com.aliyun.odps.data.RecordWriter;
 import com.aliyun.odps.tunnel.TableTunnel;
 import com.aliyun.odps.tunnel.TableTunnel.UploadSession;
+import com.aliyun.odps.tunnel.TableTunnel.UploadStatus;
 import com.aliyun.odps.tunnel.TunnelException;
+import com.aliyun.odps.tunnel.io.TunnelBufferedWriter;
 import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.outputs.BaseOutput;
+import com.google.common.collect.Maps;
 
 /**
  * 
@@ -49,26 +53,40 @@ import com.dtstack.jlogstash.outputs.BaseOutput;
  */
 @SuppressWarnings("serial")
 public class OutOdps extends BaseOutput {
+	
+	    private static Logger logger = LoggerFactory.getLogger(OutOdps.class);
 
         @Required(required = true)
-        private static String accessId;
+        private static String accessId ="LTAIVFhOq0E8Wl54";
 
         @Required(required = true)
-        private static String accessKey;
+        private static String accessKey = "99TFYSEZtzjFqZ8WRnmEW4rEwC0aDP";
 
         @Required(required = true)
-        private static String odpsUrl;
+        private static String odpsUrl = "http://service.odps.aliyun.com/api";
 
         @Required(required = true)
-        private static String project;
+        private static String project = "dtstack_dev";
 
         @Required(required = true)
-        private static String table;
+        private static String table = "rec_movies";
 
-        private static String partition;
+        private static String partition;//example dt ='ysq',pt= '123'
 
-        private static int threadNum = 10;
-
+        private static UploadSession uploadSession;
+        
+        private TunnelBufferedWriter recordWriter;
+        
+        private TableSchema tableSchema ;
+        
+        private static Long bufferSize;//default 10M
+        
+        private static TableTunnel tunnel;
+        
+        private static int interval = 5000;
+        
+        private Executor executor = Executors.newFixedThreadPool(1);
+        
         public OutOdps(Map config) {
                 super(config);
                 // TODO Auto-generated constructor stub
@@ -77,100 +95,141 @@ public class OutOdps extends BaseOutput {
         @Override
         public void prepare() {
                 // TODO Auto-generated method stub
+        	try{
+        		if(tunnel==null){
+        			synchronized(OutOdps.class){
+        				if(tunnel==null){
+        					tunnel = createTableTunnel();
+        				}
+        			}
+        		}
+        		if(uploadSession==null){
+        			synchronized(OutOdps.class){
+        				if(uploadSession==null){
+        					uploadSession = createUploadSession();
+        				}
+        			}
+        		}
+                this.tableSchema = uploadSession.getSchema();
+                this.recordWriter = createTunnelBufferedWriter();
+                executor.execute(new Runnable(){
+
+					@Override
+					public void run() {
+						// TODO Auto-generated method stub
+						try{
+							Thread.sleep(interval);
+							if(recordWriter!=null)recordWriter.close();
+						}catch(Throwable e){
+							logger.error("",e);
+						}
+					}
+                });
+        	}catch(Throwable e){
+        		logger.error("OutOdps init error:",e);
+        		System.exit(-1);
+        	}
+        }
+        
+        
+        
+        private TunnelBufferedWriter createTunnelBufferedWriter() throws TunnelException{
+        	TunnelBufferedWriter writer =(TunnelBufferedWriter) uploadSession.openBufferedWriter();
+        	if(bufferSize!=null){
+        		writer.setBufferSize(bufferSize);
+        	}
+            return writer;
+        }
+        
+        private TableTunnel createTableTunnel(){
+        	  Account account = new AliyunAccount(accessId, accessKey);
+              Odps odps = new Odps(account);
+              odps.setEndpoint(odpsUrl);
+              odps.setDefaultProject(project);	
+              return new TableTunnel(odps);
+        }
+        
+        public UploadSession createUploadSession() throws TunnelException{
+            if(StringUtils.isNotBlank(partition)){
+                PartitionSpec partitionSpec = new PartitionSpec(partition);
+                return tunnel.createUploadSession(project,table, partitionSpec);
+            }else{
+            	return tunnel.createUploadSession(project,table);
+            }
         }
 
         @Override
         protected void emit(Map event) {
                 // TODO Auto-generated method stub
-
+        	try {
+        		while(uploadSession.getStatus().ordinal()!=UploadStatus.NORMAL.ordinal()){
+        			Thread.sleep(1000);
+        			logger.warn("uploadSession is Expired");
+        			uploadSession = createUploadSession();
+        			this.recordWriter = createTunnelBufferedWriter();
+        		}
+				this.recordWriter.write(createRecord(event));
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+        		logger.error("OutOdps emit error:",e);
+			}
         }
-
-        private static class UploadThread implements Callable<Boolean> {
-                private long id;
-                private RecordWriter recordWriter;
-                private Record record;
-                private TableSchema tableSchema;
-
-                public UploadThread(long id, RecordWriter recordWriter, Record record,
-                                TableSchema tableSchema) {
-                        this.id = id;
-                        this.recordWriter = recordWriter;
-                        this.record = record;
-                        this.tableSchema = tableSchema;
-                }
-
-                public Boolean call() throws IOException {
-                        for (int i = 0; i < tableSchema.getColumns().size(); i++) {
-                                Column column = tableSchema.getColumn(i);
-                                switch (column.getType()) {
-                                case BIGINT:
-                                        record.setBigint(i, 1L);
-                                        break;
-                                case BOOLEAN:
-                                        record.setBoolean(i, true);
-                                        break;
-                                case DATETIME:
-                                        record.setDatetime(i, new Date());
-                                        break;
-                                case DOUBLE:
-                                        record.setDouble(i, 0.0);
-                                        break;
-                                case STRING:
-                                        record.setString(i, "sample");
-                                        break;
-                                default:
-                                        throw new RuntimeException("Unknown column type: "
-                                                        + column.getType());
-                                }
-                        }
-                        for (int i = 0; i < 10; i++) {
-                                try {
-                                        recordWriter.write(record);
-                                } catch (IOException e) {
-                                        recordWriter.close();
-                                        e.printStackTrace();
-                                        return false;
-                                }
-                        }
-                        recordWriter.close();
-                        return true;
-                }
+        
+        @Override
+        public void release(){
+        	try{
+        		this.recordWriter.close();
+            	uploadSession.commit();
+        	}catch(Throwable e){
+        		logger.error("OutOdps release error:",e);
+        	}
         }
-
-        public static void main(String args[]) {
-                Account account = new AliyunAccount(accessId, accessKey);
-                Odps odps = new Odps(account);
-                odps.setEndpoint(odpsUrl);
-                odps.setDefaultProject(project);
-                try {
-                        TableTunnel tunnel = new TableTunnel(odps);
-                        PartitionSpec partitionSpec = new PartitionSpec(partition);
-                        UploadSession uploadSession = tunnel.createUploadSession(project,
-                                        table, partitionSpec);
-                        System.out.println("Session Status is : "
-                                        + uploadSession.getStatus().toString());
-                        ExecutorService pool = Executors.newFixedThreadPool(threadNum);
-                        ArrayList<Callable<Boolean>> callers = new ArrayList<Callable<Boolean>>();
-                        for (int i = 0; i < threadNum; i++) {
-                                RecordWriter recordWriter = uploadSession.openRecordWriter(i);
-                                Record record = uploadSession.newRecord();
-                                callers.add(new UploadThread(i, recordWriter, record,
-                                                uploadSession.getSchema()));
-                        }
-                        pool.invokeAll(callers);
-                        pool.shutdown();
-                        Long[] blockList = new Long[threadNum];
-                        for (int i = 0; i < threadNum; i++)
-                                blockList[i] = Long.valueOf(i);
-                        uploadSession.commit(blockList);
-                        System.out.println("upload success!");
-                } catch (TunnelException e) {
-                        e.printStackTrace();
-                } catch (IOException e) {
-                        e.printStackTrace();
-                } catch (InterruptedException e) {
-                        e.printStackTrace();
-                }
+        
+        private Record createRecord(Map event){
+        	Record record = uploadSession.newRecord();
+            for (int i = 0; i < tableSchema.getColumns().size(); i++) {
+                Column column = tableSchema.getColumn(i);
+                String name = column.getName();
+                Object value = event.get(name);
+                if(value!=null){
+                    switch (column.getType()) {
+                    case BIGINT:
+                            record.set(name, Long.parseLong(value.toString()));
+                            break;
+                    case BOOLEAN:
+                           record.set(name, Boolean.parseBoolean(value.toString()));
+                            break;
+                    case DATETIME:
+                    	    record.set(name, value);
+                            break;
+                    case DOUBLE:
+                            record.set(name, Double.parseDouble(value.toString()));
+                            break;
+                    case STRING:
+                            record.set(name, value.toString());
+                            break;
+                    default:
+                            logger.warn("{}:Unknown column type: "+ column.getType(),name);
+                    }
+                  }
+               }
+            return record;
+         }
+        
+        public static void main(String args[]) throws TunnelException, IOException {
+        	
+    		Map<String,Object> event = new HashMap<String,Object>(){
+    			{
+    				put("title","tttt");
+    				put("movieid","tttt");
+    				put("genres","tttt");
+    			}
+    		};
+    		OutOdps OutOdps = new OutOdps(Maps.newHashMap());
+    		OutOdps.prepare();
+    		for(int i=0;i<10;i++){
+        		OutOdps.emit(event);
+    		}
+    		uploadSession.commit();
         }
-
 }

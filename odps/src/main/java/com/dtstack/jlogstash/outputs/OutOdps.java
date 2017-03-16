@@ -17,7 +17,6 @@
  */
 package com.dtstack.jlogstash.outputs;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;

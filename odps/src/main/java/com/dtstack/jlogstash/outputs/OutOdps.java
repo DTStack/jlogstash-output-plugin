@@ -17,7 +17,6 @@
  */
 package com.dtstack.jlogstash.outputs;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +42,6 @@ import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.outputs.BaseOutput;
 import com.dtstack.jlogstash.render.Formatter;
 import com.google.common.collect.Maps;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -65,7 +63,6 @@ public class OutOdps extends BaseOutput {
         @Required(required = true)
         private static String accessKey;
 
-        @Required(required = true)
         private static String odpsUrl = "http://service.odps.aliyun.com/api";
 
         @Required(required = true)
@@ -250,24 +247,24 @@ public class OutOdps extends BaseOutput {
             return record;
          }
         
-        public static void main(String args[]) throws Exception {
-    		Map<String,Object> event = new HashMap<String,Object>(){
-    			{
-    			}
-    		};
-    		OutOdps OutOdps = new OutOdps(Maps.newHashMap());
-    		OutOdps.prepare();
-    		for(int i=0;i<10000;i++){
-    			event.put("uid", "ysq"+String.valueOf(i));
-        		OutOdps.emit(event);
-    		}
-    		
-    		Thread.sleep(5*60*1000);
-    		
-    		for(int i=0;i<10000;i++){
-    			event.put("uid", "ysq"+String.valueOf(i));
-        		OutOdps.emit(event);
-    		}
-    		System.out.println("end...");
-        }
+//        public static void main(String args[]) throws Exception {
+//    		Map<String,Object> event = new HashMap<String,Object>(){
+//    			{
+//    			}
+//    		};
+//    		OutOdps OutOdps = new OutOdps(Maps.newHashMap());
+//    		OutOdps.prepare();
+//    		for(int i=0;i<10000;i++){
+//    			event.put("uid", "ysq"+String.valueOf(i));
+//        		OutOdps.emit(event);
+//    		}
+//    		
+//    		Thread.sleep(5*60*1000);
+//    		
+//    		for(int i=0;i<10000;i++){
+//    			event.put("uid", "ysq"+String.valueOf(i));
+//        		OutOdps.emit(event);
+//    		}
+//    		System.out.println("end...");
+//        }
 }

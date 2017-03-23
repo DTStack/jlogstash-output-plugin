@@ -1,5 +1,7 @@
 output 详情见wiki
+
 #Elasticsearch:
+
       index:索引(dtlog-%{tenant_id}-%{+YYYY.MM.dd}) 必填
     
       indexTimezone: 如果索引有时间，配置时区 默认 UTC
@@ -21,6 +23,7 @@ output 详情见wiki
       consistency:false 数据一致性的开关，默认关闭；打开之后，在elasticsearch 集群不可用的情况下，数据会不断重试，不会再消费input数据，直到elasticsearch集群可用
 
 #Elasticsearch5:
+
       index:索引(dtlog-%{tenant_id}-%{+YYYY.MM.dd}) 必填
     
       indexTimezone: 如果索引有时间，配置时区 默认 UTC
@@ -43,6 +46,7 @@ output 详情见wiki
 
 
 #Kafka:
+
     encoding:默认utf-8
     
     topic:必填(dt-%{tenant_id})
@@ -63,9 +67,10 @@ output 详情见wiki
 	
     batchNum 默认kafka自带的值
 	
-   requestRequiredAcks 默认值为1
+    requestRequiredAcks 默认值为1
 
 #Performance:
+
    interval:数据刷入文件的间隔时间，默认30秒
 
    timeZone:时区 默认UTC
@@ -73,6 +78,7 @@ output 详情见wiki
    path:文件路径（home/admin/jlogserver/logs/srsyslog-performance-%{+YYYY.MM.dd}.txt）必填
 
 #File:
+
    timeZone:时区 默认UTC
 
    path:文件路径（home/admin/jlogserver/logs/srsyslog-performance-%{+YYYY.MM.dd}.txt）必填
@@ -84,6 +90,7 @@ output 详情见wiki
    split:自定义输出格式属性之间的分隔符
 
 #Stdout:
+
   标准输出
   codec:line(默认值)
   line,json_lines, java_lines三种值可以选择

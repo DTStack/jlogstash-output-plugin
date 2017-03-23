@@ -85,7 +85,7 @@ output 详情见wiki
     
     bufferSize: default 10M 
     
-    interval: default 5*60*1000 mills
+    interval: default 300000 mills
     
 #Performance:
 

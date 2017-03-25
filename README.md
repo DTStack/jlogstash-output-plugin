@@ -1,6 +1,6 @@
 output 详情见wiki
 
-#Elasticsearch:
+# Elasticsearch:
 
       index:索引(dtlog-%{tenant_id}-%{+YYYY.MM.dd}) 必填
     
@@ -22,7 +22,7 @@ output 详情见wiki
 
       consistency:false 数据一致性的开关，默认关闭；打开之后，在elasticsearch 集群不可用的情况下，数据会不断重试，不会再消费input数据，直到elasticsearch集群可用
 
-#Elasticsearch5:
+# Elasticsearch5:
 
       index:索引(dtlog-%{tenant_id}-%{+YYYY.MM.dd}) 必填
     
@@ -45,7 +45,7 @@ output 详情见wiki
       consistency:false 数据一致性的开关，默认关闭；打开之后，在elasticsearch 集群不可用的情况下，数据会不断重试，不会再消费input数据，直到elasticsearch集群可用
 
 
-#Kafka:
+# Kafka:
 
     encoding:默认utf-8
     
@@ -69,7 +69,7 @@ output 详情见wiki
 	
     requestRequiredAcks 默认值为1
     
-#OutOdps:
+# OutOdps:
 
     accessId: aliyun accessId 需要到阿里云官网申请 （必填）
     
@@ -87,7 +87,7 @@ output 详情见wiki
     
     interval: default 300000 mills
     
-#Performance:
+# Performance:
 
    interval: 数据刷入文件的间隔时间，默认30秒
 
@@ -95,7 +95,7 @@ output 详情见wiki
 
    path: 文件路径（home/admin/jlogserver/logs/srsyslog-performance-%{+YYYY.MM.dd}.txt）必填
 
-#File:
+# File:
 
    timeZone:时区 默认UTC
 
@@ -107,7 +107,7 @@ output 详情见wiki
    
    split:自定义输出格式属性之间的分隔符
 
-#Stdout:
+# Stdout:
 
   codec:line(默认值)
   

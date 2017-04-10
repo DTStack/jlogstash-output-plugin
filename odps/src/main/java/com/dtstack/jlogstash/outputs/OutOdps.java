@@ -145,8 +145,7 @@ public class OutOdps extends BaseOutput {
         		((TunnelBufferedWriter)objs[2]).write(record);
         	    long t1 = System.currentTimeMillis();
         	    if(t1 - current > interval){
-        	    	release();
- 				    objects.clear(); 
+        	    	commit();
         	    	current = t1;
         	    	logger.warn("uploadSession is committed...");
         	    }
@@ -178,6 +177,21 @@ public class OutOdps extends BaseOutput {
         	}catch(Throwable e){
         		logger.error("OutOdps release error:",e);
         	}
+        }
+        
+        private void commit(){
+        	try{
+      		   if(objects.size()>0){
+ 				   Set<Map.Entry<String,Object[]>> entrys = objects.entrySet();
+ 				   for(Map.Entry<String,Object[]> entry:entrys){
+ 					   Object[] objs = entry.getValue();
+ 					      ((UploadSession)objs[0]).commit();
+ 					   }
+ 				   objects.clear();
+ 				 }
+         	}catch(Throwable e){
+         		logger.error("OutOdps commit error:",e);
+         	}
         }
         
         private Record createRecord(Map event,UploadSession uploadSession,TableSchema tableSchema){

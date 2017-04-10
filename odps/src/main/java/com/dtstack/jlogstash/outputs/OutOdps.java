@@ -19,8 +19,6 @@ package com.dtstack.jlogstash.outputs;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,17 +29,14 @@ import com.aliyun.odps.TableSchema;
 import com.aliyun.odps.account.Account;
 import com.aliyun.odps.account.AliyunAccount;
 import com.aliyun.odps.data.Record;
-import com.aliyun.odps.data.RecordWriter;
 import com.aliyun.odps.tunnel.TableTunnel;
 import com.aliyun.odps.tunnel.TableTunnel.UploadSession;
-import com.aliyun.odps.tunnel.TableTunnel.UploadStatus;
 import com.aliyun.odps.tunnel.TunnelException;
 import com.aliyun.odps.tunnel.io.TunnelBufferedWriter;
 import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.outputs.BaseOutput;
 import com.dtstack.jlogstash.render.Formatter;
 import com.google.common.collect.Maps;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 
@@ -74,14 +69,15 @@ public class OutOdps extends BaseOutput {
 
         public static String timezone = null;
         
-        private static Long bufferSize;//default 10M
+        private static long bufferSize ;//default 10M
         
-        private static TableTunnel tunnel;
-        
+        private TableTunnel tunnel;
+                
         private static long interval = 5*60*1000;
         
-        private Executor executor = Executors.newFixedThreadPool(1);
-        
+        private long current = System.currentTimeMillis();
+           
+            
         private Map<String,Object[]> objects = Maps.newHashMap();//[UploadSession,TableSchema,TunnelBufferedWriter,AtomicBoolean]
         
         public OutOdps(Map config) {
@@ -100,54 +96,15 @@ public class OutOdps extends BaseOutput {
         				}
         			}
         		}
-                executor.execute(new Runnable(){
-					@Override
-					public void run() {
-						// TODO Auto-generated method stub
-						try{
-							while(true){
-							   Thread.sleep(interval);
-							   if(objects.size()>0){
-								   Set<Map.Entry<String,Object[]>> entrys = objects.entrySet();
-								   for(Map.Entry<String,Object[]> entry:entrys){
-									   Object[] objs = entry.getValue();
-									   AtomicBoolean ab = ((AtomicBoolean)objs[3]);
-									   UploadSession uploadSession = ((UploadSession)objs[0]);
-									   RecordWriter recordWriter = ((RecordWriter)objs[2]);
-									   String par = entry.getKey();
-									   ab.getAndSet(false);
-									   recordWriter.close();
-									   uploadSession.commit();
-					        		   logger.warn("{}:uploadSession is commited...",par);
-					        		   uploadSession = createUploadSession(par);
-					        		   recordWriter = createTunnelBufferedWriter(uploadSession);
-					           		   while(uploadSession.getStatus().ordinal()!=UploadStatus.NORMAL.ordinal()){
-						        		   uploadSession = createUploadSession(par);
-						        		   recordWriter = createTunnelBufferedWriter(uploadSession);
-					        		   }
-					           		   objs[0] = uploadSession;
-					           		   objs[1] = uploadSession.getSchema();
-					           		   objs[2] = recordWriter;
-					           		   ab.getAndSet(true);
-								   }
-							   }
-							}
-						}catch(Throwable e){
-							logger.error("",e);
-						}
-					}
-                });
         	}catch(Throwable e){
         		logger.error("OutOdps init error:",e);
         		System.exit(-1);
         	}
         }
         
-        
-        
         private TunnelBufferedWriter createTunnelBufferedWriter(UploadSession uploadSession) throws TunnelException{
         	TunnelBufferedWriter writer =(TunnelBufferedWriter) uploadSession.openBufferedWriter();
-        	if(bufferSize!=null){
+        	if(bufferSize > 0 ){
         		writer.setBufferSize(bufferSize);
         	}
             return writer;
@@ -180,12 +137,20 @@ public class OutOdps extends BaseOutput {
         			objs = createArrayObject(par);
         			objects.put(par, objs);
         		}
-        		while(!((AtomicBoolean)objs[3]).get()){
-        			logger.warn("{}:uploadsession is unavailable...",par);
-        			Thread.sleep(1000);
+        		Record record = createRecord(event,(UploadSession)objs[0],(TableSchema)objs[1]);
+        		Object[] cols = record.toArray();
+        		if(cols==null||cols.length ==0){
+        			return ;
         		}
-        		((TunnelBufferedWriter)objs[2]).write(createRecord(event,(UploadSession)objs[0],(TableSchema)objs[1]));
-			} catch (Exception e) {
+        		((TunnelBufferedWriter)objs[2]).write(record);
+        	    long t1 = System.currentTimeMillis();
+        	    if(t1 - current > interval){
+        	    	release();
+ 				    objects.clear(); 
+        	    	current = t1;
+        	    	logger.warn("uploadSession is committed...");
+        	    }
+        	} catch (Exception e) {
 				// TODO Auto-generated catch block
         		logger.error("OutOdps emit error:",e);
 			}
@@ -193,10 +158,10 @@ public class OutOdps extends BaseOutput {
         
         
         private Object[] createArrayObject(String par) throws TunnelException{
-			UploadSession uploadSession = createUploadSession(par);
-			TableSchema tableSchema = uploadSession.getSchema();
-			TunnelBufferedWriter tunnelBufferedWriter = createTunnelBufferedWriter(uploadSession);
-			return new Object[]{uploadSession,tableSchema,tunnelBufferedWriter,new AtomicBoolean(true)};
+        	UploadSession uploadSession = createUploadSession(par);
+        	TableSchema tableSchema = uploadSession.getSchema();
+        	TunnelBufferedWriter tunnelBufferedWriter = createTunnelBufferedWriter(uploadSession);
+        	return new Object[]{uploadSession,tableSchema,tunnelBufferedWriter};
         }
         
         @Override
@@ -209,7 +174,7 @@ public class OutOdps extends BaseOutput {
 					      ((TunnelBufferedWriter)objs[2]).close();
 					      ((UploadSession)objs[0]).commit();
 					   }
-				   }
+				 }
         	}catch(Throwable e){
         		logger.error("OutOdps release error:",e);
         	}
@@ -245,25 +210,4 @@ public class OutOdps extends BaseOutput {
                }
             return record;
          }
-        
-//        public static void main(String args[]) throws Exception {
-//    		Map<String,Object> event = new HashMap<String,Object>(){
-//    			{
-//    			}
-//    		};
-//    		OutOdps OutOdps = new OutOdps(Maps.newHashMap());
-//    		OutOdps.prepare();
-//    		for(int i=0;i<10000;i++){
-//    			event.put("uid", "ysq"+String.valueOf(i));
-//        		OutOdps.emit(event);
-//    		}
-//    		
-//    		Thread.sleep(5*60*1000);
-//    		
-//    		for(int i=0;i<10000;i++){
-//    			event.put("uid", "ysq"+String.valueOf(i));
-//        		OutOdps.emit(event);
-//    		}
-//    		System.out.println("end...");
-//        }
 }

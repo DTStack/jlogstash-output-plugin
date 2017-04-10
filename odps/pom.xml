@@ -4,7 +4,7 @@
 
 	<groupId>com.dtstack.jlogstash.outputs</groupId>
 	<artifactId>outodps</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 	<name>outodps</name>
 	<url>http://maven.apache.org</url>

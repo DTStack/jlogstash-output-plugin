@@ -146,6 +146,7 @@ public class OutOdps extends BaseOutput {
         	    long t1 = System.currentTimeMillis();
         	    if(t1 - current > interval){
         	    	commit();
+        	    	objects.clear();
         	    	current = t1;
         	    	logger.warn("uploadSession is committed...");
         	    }
@@ -154,7 +155,6 @@ public class OutOdps extends BaseOutput {
         		logger.error("OutOdps emit error:",e);
 			}
         }
-        
         
         private Object[] createArrayObject(String par) throws TunnelException{
         	UploadSession uploadSession = createUploadSession(par);
@@ -165,29 +165,18 @@ public class OutOdps extends BaseOutput {
         
         @Override
         public void release(){
-        	try{
-     		   if(objects.size()>0){
-				   Set<Map.Entry<String,Object[]>> entrys = objects.entrySet();
-				   for(Map.Entry<String,Object[]> entry:entrys){
-					   Object[] objs = entry.getValue();
-					      ((TunnelBufferedWriter)objs[2]).close();
-					      ((UploadSession)objs[0]).commit();
-					   }
-				 }
-        	}catch(Throwable e){
-        		logger.error("OutOdps release error:",e);
-        	}
+        	commit();
         }
         
-        private void commit(){
+        private synchronized void commit(){
         	try{
       		   if(objects.size()>0){
  				   Set<Map.Entry<String,Object[]>> entrys = objects.entrySet();
  				   for(Map.Entry<String,Object[]> entry:entrys){
  					   Object[] objs = entry.getValue();
+ 					      ((TunnelBufferedWriter)objs[2]).close();
  					      ((UploadSession)objs[0]).commit();
  					   }
- 				   objects.clear();
  				 }
          	}catch(Throwable e){
          		logger.error("OutOdps commit error:",e);

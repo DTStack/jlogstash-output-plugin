@@ -18,12 +18,15 @@
 package com.dtstack.jlogstash.outputs;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.dtstack.jlogstash.outputs.util.LocalIpAddressUtil;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -36,6 +39,8 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.handler.codec.compression.ZlibEncoder;
+import org.jboss.netty.handler.codec.compression.ZlibWrapper;
 import org.jboss.netty.handler.codec.string.StringEncoder;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timeout;
@@ -45,7 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.dtstack.jlogstash.annotation.Required;
-import com.dtstack.jlogstash.outputs.BaseOutput;
 import com.google.common.collect.Maps;
 
 /**
@@ -70,6 +74,15 @@ public class Netty extends BaseOutput{
 	private static String host;
 	
 	private NettyClient client;
+
+	/**是否开启数据压缩*/
+	private static boolean openCompression = false;
+
+	/**压缩等级*/
+	private static int compressionLevel = 1;
+
+	/**是否采集本地ip*/
+	private static boolean openCollectIp = false;
 	
 	private static ObjectMapper objectMapper = new ObjectMapper();
 		
@@ -77,6 +90,10 @@ public class Netty extends BaseOutput{
 	private static String format;
 	
 	private Map<String, String> replaceStrMap = null;
+
+	private List<String> localIpList;
+
+	private static String LOCAL_IP_KEY = "localip";
 	
 	private static String delimiter = System.getProperty("line.separator");
 	
@@ -86,16 +103,23 @@ public class Netty extends BaseOutput{
 
 	@Override
 	public void prepare() {
-		client = new NettyClient(host, port);
+
+		client = new NettyClient(host, port, openCompression);
+        client.setCompressionLevel(compressionLevel);
 		client.connect();
 		formatStr(format);
-	}
+        localIpList = LocalIpAddressUtil.resolveLocalIps();
+        logger.info("netty output client prepare success! remoteIp:{}, " +
+                "port:{}, openCompression:{}, compressionLv:{}, openCollectIp:{}", new Object[]{host, port,
+                openCompression, compressionLevel, openCollectIp});
+    }
 
 	@Override
 	protected void emit(Map event) {
 		
 		try{
 			String msg = "";
+			collectIp(event);
 			if(format != null){
 				msg = replaceStr(event);
 			}else{
@@ -107,6 +131,12 @@ public class Netty extends BaseOutput{
 			logger.error("", e);
 		}
 	}
+
+	private void collectIp(Map event){
+	    if(openCollectIp){
+            event.put(LOCAL_IP_KEY, localIpList);
+        }
+    }
 	
 	private String replaceStr(Map event){
 		String outStr = format;
@@ -207,6 +237,10 @@ class NettyClient{
 	private int port;
 	
 	private String host;
+
+	private boolean openCompression;
+
+	private int compressionLevel = 1;
 	
 	private volatile Channel channel;
 	
@@ -216,9 +250,10 @@ class NettyClient{
 	
 	public Object lock = new Object();
 				
-	public NettyClient(String host, int port){
+	public NettyClient(String host, int port, boolean openCompression){
 		this.host = host;
 		this.port = port;
+		this.openCompression = openCompression;
 	} 
 	
 	public void connect(){
@@ -236,7 +271,11 @@ class NettyClient{
 			public ChannelPipeline getPipeline() throws Exception {
 				ChannelPipeline pipeline =  Channels.pipeline();
 				pipeline.addLast("handler", handler);
-				pipeline.addLast("encoder", new StringEncoder());
+
+				if(openCompression){
+                    pipeline.addLast("zlibEncoder", new ZlibEncoder(ZlibWrapper.GZIP, compressionLevel));
+                }
+                pipeline.addLast("encoder", new StringEncoder());
 				return pipeline;
 			}
 		});
@@ -275,5 +314,8 @@ class NettyClient{
 	public void setChannel(ChannelFuture channelfuture) {
 		this.channel = channelfuture.getChannel();
 	}
-	
+
+    public void setCompressionLevel(int compressionLevel) {
+        this.compressionLevel = compressionLevel;
+    }
 }

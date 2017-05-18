@@ -21,12 +21,16 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.dtstack.jlogstash.outputs.util.LocalIpAddressUtil;
+import com.google.common.base.Strings;
+import com.google.common.collect.Queues;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -96,8 +100,14 @@ public class Netty extends BaseOutput{
 	private static String LOCAL_IP_KEY = "local_ip";
 	
 	private static String delimiter = System.getProperty("line.separator");
-	
-	public Netty(Map config){
+
+    private static int sendGapTime = 2 * 1000;//发送间隔时间大小
+
+    private static int maxBufferSize = 5 * 1024;//最大缓存msg大小
+
+    private SenderBuffer senderBuffer;
+
+    public Netty(Map config){
 		super(config);
 	}
 
@@ -109,6 +119,12 @@ public class Netty extends BaseOutput{
 		client.connect();
 		formatStr(format);
         localIpList = LocalIpAddressUtil.resolveLocalIps();
+
+        if(openCompression){//只有在使用压缩的情况下才需要使用本地缓存
+            senderBuffer = new SenderBuffer(client, sendGapTime, maxBufferSize);
+            senderBuffer.start();
+        }
+
         logger.info("netty output client prepare success! remoteIp:{}, " +
                 "port:{}, openCompression:{}, compressionLv:{}, openCollectIp:{}", new Object[]{host, port,
                 openCompression, compressionLevel, openCollectIp});
@@ -125,14 +141,27 @@ public class Netty extends BaseOutput{
 			}else{
 				msg = objectMapper.writeValueAsString(event);
 			}
-			
-			client.write(msg + delimiter);
+
+			msg = msg + delimiter;
+
+			if(openCompression){
+                senderBuffer.pushData(msg);
+            }else{
+                client.write(msg + delimiter);
+            }
 		}catch(Exception e){
 			logger.error("", e);
 		}
 	}
 
-	private void collectIp(Map event){
+    @Override
+    public void release() {
+        if(senderBuffer != null){
+            senderBuffer.stop();
+        }
+    }
+
+    private void collectIp(Map event){
 	    if(openCollectIp){
             event.put(LOCAL_IP_KEY, localIpList);
         }
@@ -180,7 +209,6 @@ public class Netty extends BaseOutput{
 			System.exit(-1);
 		}
 	}
-
 	
 }
 
@@ -226,8 +254,8 @@ class NettyClientHandler extends SimpleChannelHandler {
 	}	
 	
 	InetSocketAddress getRemoteAddress() {
-		return (InetSocketAddress) client.getBootstrap().getOption("remoteAddress");
-	}
+        return (InetSocketAddress) client.getBootstrap().getOption("remoteAddress");
+    }
 	
 }
 
@@ -320,4 +348,92 @@ class NettyClient{
         this.compressionLevel = compressionLevel;
     }
 
+}
+
+class SenderBuffer implements Runnable{
+
+    private static final Logger logger = LoggerFactory.getLogger(SenderBuffer.class);
+
+    private BlockingQueue<String> queue = Queues.newLinkedBlockingQueue();
+
+    private int currBufferSize = 0;
+
+    private long lastSendTime = -1;//缓存上次发送的时间
+
+    private int sendGapTime;//发送间隔时间大小
+
+    private int maxBufferSize;//最大缓存msg大小
+
+    private StringBuffer sb = new StringBuffer("");
+
+    private boolean run = false;
+
+    private NettyClient client;
+
+    public SenderBuffer(NettyClient nettyClient, int sendGapTime, int maxBufferSize){
+        this.client = nettyClient;
+        this.sendGapTime = sendGapTime;
+        this.maxBufferSize = maxBufferSize;
+        lastSendTime = System.currentTimeMillis();
+    }
+
+    public void start(){
+        ExecutorService es = Executors.newSingleThreadExecutor();
+        run = true;
+        es.submit(this);
+        logger.info("-----start sender buffer success------");
+    }
+
+    public void pushData(String msg){
+        queue.offer(msg);
+    }
+
+    public void stop(){
+        run = false;
+        //是否需要等待线程执行完成
+        sendBufferMsg();
+    }
+
+
+    @Override
+    public void run() {
+        while(run){
+            try{
+                String data = queue.poll(sendGapTime, TimeUnit.MILLISECONDS);
+                if(data == null){//超时发送缓冲区数据
+                    sendBufferMsg();
+                }else{
+                    pushToPool(data);
+                }
+            }catch (Exception e){
+                logger.error("", e);
+            }
+        }
+    }
+
+    private void pushToPool(String msg){
+        sb.append(msg);
+        currBufferSize += msg.length();
+
+        if(System.currentTimeMillis() - lastSendTime >= sendGapTime){
+            sendBufferMsg();
+            return;
+        }
+
+        if(currBufferSize >= maxBufferSize){
+            sendBufferMsg();
+            return;
+        }
+    }
+
+    private void sendBufferMsg(){
+        String msg = sb.toString();
+        currBufferSize = 0;
+        lastSendTime = System.currentTimeMillis();
+        sb = new StringBuffer("");
+
+        if(!Strings.isNullOrEmpty(msg)){
+            client.write(msg);
+        }
+    }
 }

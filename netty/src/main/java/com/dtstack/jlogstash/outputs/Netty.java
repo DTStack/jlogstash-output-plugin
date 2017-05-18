@@ -79,7 +79,7 @@ public class Netty extends BaseOutput{
 	private static boolean openCompression = false;
 
 	/**压缩等级*/
-	private static int compressionLevel = 1;
+	private static int compressionLevel = 6;
 
 	/**是否采集本地ip*/
 	private static boolean openCollectIp = false;

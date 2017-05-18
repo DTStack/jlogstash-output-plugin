@@ -93,7 +93,7 @@ public class Netty extends BaseOutput{
 
 	private List<String> localIpList;
 
-	private static String LOCAL_IP_KEY = "localip";
+	private static String LOCAL_IP_KEY = "local_ip";
 	
 	private static String delimiter = System.getProperty("line.separator");
 	
@@ -155,15 +155,15 @@ public class Netty extends BaseOutput{
 	}
 	
 	private void formatStr(String format){
-		
+
 		if(this.format == null){
 			return;
 		}
-		
+
 		if(replaceStrMap != null){
 			return;
 		}
-		
+
 		replaceStrMap = Maps.newHashMap();
 		Pattern pattern = Pattern.compile("(\\$\\{[a-z0-9A-Z._-]+\\})");
 		Matcher matcher = pattern.matcher(format);
@@ -174,12 +174,13 @@ public class Netty extends BaseOutput{
 			String str = replaceStr.replace("${", "").replace("}", "");
 			replaceStrMap.put(replaceStr, str);
 		}
-		
+
 		if(!flag){
 			logger.error("invalid format str cannot matcher pattern:{}.", "(\\$\\{[a-z0-9A-Z._-]+\\})");
 			System.exit(-1);
 		}
 	}
+
 	
 }
 
@@ -318,4 +319,5 @@ class NettyClient{
     public void setCompressionLevel(int compressionLevel) {
         this.compressionLevel = compressionLevel;
     }
+
 }

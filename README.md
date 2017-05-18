@@ -129,7 +129,7 @@
 
   openCollectIp: 是否获取本地的ip地址添加到消息里
 
-  format：输出数据格式，eg:${HOSTNAME} ${appname} [${user_token} type=${logtype} tag="${logtag}"],会将对于的变量名称替换成消息里面的存在值
+  format：输出数据格式，eg:${HOSTNAME} ${appname} [${user_token} type=${logtype} tag="${logtag}"],会将对应的变量名称替换成消息里面的存在值
 
   delimiter: 发送的字符串的分隔符，默认是系统行分隔符
   

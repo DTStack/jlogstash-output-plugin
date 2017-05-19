@@ -162,7 +162,7 @@ public class Netty extends BaseOutput{
     }
 
     private void collectIp(Map event){
-	    if(openCollectIp){
+	    if(openCollectIp && !event.containsKey(LOCAL_IP_KEY)){
             event.put(LOCAL_IP_KEY, localIpList);
         }
     }
@@ -229,7 +229,7 @@ class NettyClientHandler extends SimpleChannelHandler {
 	
 	@Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-	    logger.error("", e);    
+	    logger.error("{}", e);
     }
 
 	@Override

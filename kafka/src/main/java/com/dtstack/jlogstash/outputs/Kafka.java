@@ -62,9 +62,9 @@ public class Kafka extends BaseOutput {
 	@Required(required=true)
 	private static String topic;
 	
-	private static Map<String,Map<String,Object>> topicSelect;
+	private static Map<String,Map<String,String>> topicSelect;
 	
-	private Set<Map.Entry<String,Map<String,Object>>> entryTopicSelect;
+	private Set<Map.Entry<String,Map<String,String>>> entryTopicSelect;
 
 	@Required(required=true)
 	private static String brokerList;
@@ -117,13 +117,15 @@ public class Kafka extends BaseOutput {
 		try {
 			String tp = null;
 			if(entryTopicSelect != null){
-				for(Map.Entry<String,Map<String,Object>> entry:entryTopicSelect){
+				for(Map.Entry<String,Map<String,String>> entry:entryTopicSelect){
 					String key = entry.getKey();
-					Map<String,Object> value = entry.getValue();
-					List<String> equals = (List<String>) value.get("equal");
-					if(equals.contains(event.get(key))){
-						tp = Formatter.format(event, (String)value.get("topic"), timezone);
-						break;
+					Map<String,String> value = entry.getValue();
+					Set<Map.Entry<String,String>> sets = value.entrySet();
+					for(Map.Entry<String,String> ey:sets){
+						if(ey.getKey().equals(event.get(key))){
+							tp = Formatter.format(event, ey.getValue(), timezone);
+							break;
+						}
 					}
 				}
 			}

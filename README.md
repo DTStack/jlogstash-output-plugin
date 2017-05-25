@@ -112,5 +112,25 @@
   
   line,json_lines, java_lines三种值可以选择
 
+
+# Netty 
+
+  host:连接远程的ip 必填
+	
+  port:连接远程的端口 必填
+
+  openCompression: 是否开启数据压缩--开启之后会使用本地的缓存,达到设定的时间或者长度之后才会发送,默认false
+
+  compressionLevel: 压缩等级，使用gzip压缩，默认是6
+
+  sendGapTime：使用本地缓存的时候最大缓存时间，超过设定时间将会发送, 默认值：2 * 1000(ms)
+
+  maxBufferSize：使用本地缓存的时候的最大缓存大小，超过设定大小的时候会发送,默认值：5 * 1024 字符
+
+  openCollectIp: 是否获取本地的ip地址添加到消息里
+
+  format：输出数据格式，eg:${HOSTNAME} ${appname} [${user_token} type=${logtype} tag="${logtag}"],会将对应的变量名称替换成消息里面的存在值
+
+  delimiter: 发送的字符串的分隔符，默认是系统行分隔符
   
   

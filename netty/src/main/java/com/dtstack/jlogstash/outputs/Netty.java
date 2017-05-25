@@ -118,9 +118,11 @@ public class Netty extends BaseOutput{
         		logger.error("compressionLevel must in 0-9...");
         		System.exit(-1);
         	}
-            client.setCompressionLevel(compressionLevel);
         }
 		client = new NettyClient(host, port, openCompression);
+        if(openCompression){
+    		client.setCompressionLevel(compressionLevel);
+        }
 		client.connect();
 		formatStr(format);
         localIpList = LocalIpAddressUtil.resolveLocalIps();

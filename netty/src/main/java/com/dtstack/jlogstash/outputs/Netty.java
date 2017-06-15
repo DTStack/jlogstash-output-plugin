@@ -72,10 +72,10 @@ public class Netty extends BaseOutput{
 	private static final Logger logger = LoggerFactory.getLogger(Netty.class);
    
 	@Required(required=true)
-	private static int port;
+	public static int port;
 	
 	@Required(required=true)
-	private static String host;
+    public static String host;
 	
 	private NettyClient client;
 
@@ -299,7 +299,7 @@ class NettyClient{
 				Executors.newCachedThreadPool()));
 		bootstrap.setOption("tcpNoDelay", false);
 		bootstrap.setOption("keepAlive", true);
-		
+
 		final NettyClientHandler handler = new NettyClientHandler(this, timer);
 		
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
@@ -361,7 +361,9 @@ class SenderBuffer implements Runnable{
 
     private static final Logger logger = LoggerFactory.getLogger(SenderBuffer.class);
 
-    private BlockingQueue<String> queue = Queues.newLinkedBlockingQueue();
+    private static int MAX_QUEUE_SIZE = 10000;
+
+    private BlockingQueue<String> queue = Queues.newArrayBlockingQueue(MAX_QUEUE_SIZE);
 
     private int currBufferSize = 0;
 

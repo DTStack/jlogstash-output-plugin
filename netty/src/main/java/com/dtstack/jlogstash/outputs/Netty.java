@@ -29,19 +29,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.dtstack.jlogstash.outputs.util.LocalIpAddressUtil;
+import com.dtstack.jlogstash.outputs.util.flow.FlowControlShiper;
+import com.dtstack.jlogstash.outputs.util.flow.Threshold;
 import com.google.common.base.Strings;
 import com.google.common.collect.Queues;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.channel.*;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.compression.ZlibEncoder;
 import org.jboss.netty.handler.codec.compression.ZlibWrapper;
@@ -87,7 +82,11 @@ public class Netty extends BaseOutput{
 
 	/**是否采集本地ip*/
 	private static boolean openCollectIp = false;
-	
+
+	private static boolean isFlowControl = false;
+
+	private static String flowThredshold = "1GB";
+
 	private static ObjectMapper objectMapper = new ObjectMapper();
 		
 	/**输出数据格式:替换的变量${var}*/
@@ -107,6 +106,8 @@ public class Netty extends BaseOutput{
 
     private SenderBuffer senderBuffer;
 
+	private static int connetTimeoutMills = 30000;
+
     public Netty(Map config){
 		super(config);
 	}
@@ -119,7 +120,7 @@ public class Netty extends BaseOutput{
         		System.exit(-1);
         	}
         }
-		client = new NettyClient(host, port, openCompression);
+		client = new NettyClient(host, port, openCompression, isFlowControl, flowThredshold, connetTimeoutMills);
         if(openCompression){
     		client.setCompressionLevel(compressionLevel);
         }
@@ -266,6 +267,50 @@ class NettyClientHandler extends SimpleChannelHandler {
 	
 }
 
+class FLowControlHandler implements ChannelDownstreamHandler {
+
+	private static final Logger logger = LoggerFactory.getLogger(FLowControlHandler.class);
+
+	private FlowControlShiper flowControlShiper;
+
+	public FLowControlHandler(String threadHold) {
+		this.flowControlShiper = new FlowControlShiper(Threshold.create(threadHold));
+	}
+
+	@Override
+	public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent e) throws Exception {
+
+		if (e instanceof MessageEvent) {
+
+			logger.debug("flowControl,messageReceived start");
+
+			ChannelBuffer msg = (ChannelBuffer)((MessageEvent)e).getMessage();
+
+			if (msg != null) {
+				flowControlShiper.acquire(msg.readableBytes());
+				logger.debug("FLowControlHandler acquire, msg={},length={}", msg, msg.readableBytes());
+			}
+
+		}
+
+		ctx.sendDownstream(e);
+	}
+
+	protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+
+		logger.debug("flowControl,messageReceived start");
+
+		if (msg != null) {
+			flowControlShiper.acquire(msg.toString().length());
+			logger.debug("FLowControlHandler acquire, msg={},length={}", msg, msg.toString().length());
+		}
+
+		return msg;
+	}
+
+}
+
+
 class NettyClient{
 	
 	private static final Logger logger = LoggerFactory.getLogger(NettyClient.class);
@@ -285,11 +330,20 @@ class NettyClient{
 	private final Timer timer = new HashedWheelTimer();
 	
 	public Object lock = new Object();
-				
-	public NettyClient(String host, int port, boolean openCompression){
+
+	private boolean isFlowControl;
+
+	private String flowThreshold;
+
+	private int connectTimeout;
+
+	public NettyClient(String host, int port, boolean openCompression, boolean isFlowControl, String flowThredhold, int connectTimeout) {
 		this.host = host;
 		this.port = port;
 		this.openCompression = openCompression;
+		this.isFlowControl = isFlowControl;
+		this.flowThreshold = flowThredhold;
+		this.connectTimeout = connectTimeout;
 	} 
 	
 	public void connect(){
@@ -311,6 +365,12 @@ class NettyClient{
 				if(openCompression){
                     pipeline.addLast("zlibEncoder", new ZlibEncoder(ZlibWrapper.GZIP, compressionLevel));
                 }
+
+				if (isFlowControl) {
+					logger.debug("flowControl,flowThreshold={}", flowThreshold);
+					pipeline.addLast("flowControl", new FLowControlHandler(flowThreshold));
+				}
+
                 pipeline.addLast("encoder", new StringEncoder());
 				return pipeline;
 			}
@@ -394,9 +454,13 @@ class SenderBuffer implements Runnable{
     }
 
     public void pushData(String msg){
-        queue.offer(msg);
-    }
-
+		try {
+			queue.put(msg);
+		} catch (InterruptedException e) {
+			logger.error("pushData err",e);
+		}
+	}
+//
     public void stop(){
         run = false;
         //是否需要等待线程执行完成

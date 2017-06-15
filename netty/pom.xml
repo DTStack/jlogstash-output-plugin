@@ -4,7 +4,7 @@
 
 	<groupId>com.dtstack.jlogstash</groupId>
 	<artifactId>output.netty</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 	<name>netty</name>
 	<description>output plugin netty</description>
@@ -142,5 +142,12 @@
 			<version>1.0.0</version>
 			<scope>provided</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>22.0-rc1</version>
+		</dependency>
+
 	</dependencies>
 </project>

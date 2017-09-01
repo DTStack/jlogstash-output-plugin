@@ -59,6 +59,7 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
     	super.configure();
         this.orcSerde = new OrcSerde();
         this.outputFormat = new OrcOutputFormat();
+        
         this.columnTypeList = Lists.newArrayList();
         for(String columnType : columnTypes) {
             this.columnTypeList.add(HdfsUtil.columnTypeToObjectInspetor(columnType));
@@ -87,7 +88,7 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
 
     @Override
     public void open() throws IOException {
-            String pathStr = String.format("%s/%s-%d-%s", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
+            String pathStr = String.format("%s/%s-%d-%s.orc", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
             logger.info("hdfs path:{}",pathStr);
             outputFormat.setOutputPath(jobConf, new Path(pathStr));
             this.recordWriter = this.outputFormat.getRecordWriter(null, jobConf, pathStr, Reporter.NULL);

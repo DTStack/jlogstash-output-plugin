@@ -81,7 +81,7 @@ public class HdfsTextOutputFormat extends HdfsOutputFormat {
 
 	@Override
 	public void open() throws IOException {
-        String pathStr = String.format("%s/%s-%d-%s", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
+        String pathStr = String.format("%s/%s-%d-%s.txt", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
 		logger.info("hdfs path:{}", pathStr);
 		// // 此处好像并没有什么卵用
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");

@@ -62,7 +62,7 @@ public class Hdfs extends BaseOutput{
 	private static Configuration configuration;
 	
 	private Map<String,HdfsOutputFormat> hdfsOutputFormats = Maps.newConcurrentMap();
-	
+		
 	public Hdfs(Map config) {
 		super(config);
 		// TODO Auto-generated constructor stub
@@ -179,14 +179,14 @@ public class Hdfs extends BaseOutput{
 		Hdfs.schema = sche;
 		Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
 		hdfs.prepare();
-		for(int i=0;i<10;i++){
+		for(int i=0;i<10000;i++){
 			Map<String,Object> event = Maps.newConcurrentMap();
 			event.put("table", "yxp11");
 			event.put("name", "jjj");
 			event.put("year", 12);
 			hdfs.emit(event);
 		}
-		hdfs.release();
+//		hdfs.release();
 	}
 
 }

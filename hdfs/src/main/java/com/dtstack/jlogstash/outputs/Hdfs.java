@@ -6,7 +6,6 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -14,7 +13,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.format.HdfsOutputFormat;
 import com.dtstack.jlogstash.format.StoreEnum;
@@ -64,7 +62,7 @@ public class Hdfs extends BaseOutput{
 	
 	private static String hadoopUserName = "root";
 	
-	private static Configuration configuration = null;
+	private static Configuration configuration;
 	
 	private Map<String,HdfsOutputFormat> hdfsOutputFormats = Maps.newConcurrentMap();
 	
@@ -104,10 +102,28 @@ public class Hdfs extends BaseOutput{
 			}
 			hdfsOutputFormat.writeRecord(event);
 		}catch(Exception e){
+			this.addFailedMsg(event);
 			logger.error("",e);
 		}
 	}
 	
+	@Override
+	public void sendFailedMsg(Object msg){
+		emit((Map) msg);
+	}
+	
+	@Override
+	public void release(){
+		Set<Map.Entry<String, HdfsOutputFormat>> entrys = hdfsOutputFormats.entrySet();
+		for(Map.Entry<String, HdfsOutputFormat> entry:entrys){
+			try {
+				entry.getValue().close();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				logger.error("",e);
+			}
+		}
+	}
 	
 	private void formatSchema(){
 		if(columns == null){

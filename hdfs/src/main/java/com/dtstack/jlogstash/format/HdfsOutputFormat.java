@@ -70,9 +70,6 @@ public abstract class HdfsOutputFormat implements  OutputFormat {
         RecordWriter<?, ?> rw = this.recordWriter;
         if(rw != null) {
             rw.close(Reporter.NULL);
-            this.recordWriter = null;
         }
     }
-
-
 }

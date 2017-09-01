@@ -1,6 +1,8 @@
 package com.dtstack.jlogstash.format.plugin;
 
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
@@ -14,10 +16,9 @@ import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
 import com.dtstack.jlogstash.format.CompressEnum;
 import com.dtstack.jlogstash.format.HdfsOutputFormat;
 import com.dtstack.jlogstash.format.HdfsUtil;
-import com.dtstack.jlogstash.format.util.ClassUtil;
 import com.dtstack.jlogstash.format.util.DateUtil;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.nio.charset.Charset;
 import java.util.*;
 
 /**
@@ -27,6 +28,16 @@ import java.util.*;
  */
 public class HdfsOrcOutputFormat extends HdfsOutputFormat{
 	
+	public HdfsOrcOutputFormat(Configuration conf,String outputFilePath,List<String> columnNames,List<String> columnTypes,String compress,String writeMode,Charset charset) {
+	   this.conf = conf;
+	   this.outputFilePath = outputFilePath;
+	   this.columnNames = columnNames;
+	   this.columnTypes = columnTypes;
+	   this.compress = compress;
+	   this.writeMode = writeMode;
+	   this.charset = charset;
+	}
+
 	private static Logger logger = LoggerFactory.getLogger(HdfsOrcOutputFormat.class);
 
     private static final long serialVersionUID = 1L;
@@ -38,6 +49,7 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
 
     @Override
     public void configure() {
+    	super.configure();
         this.orcSerde = new OrcSerde();
         this.outputFormat = new OrcOutputFormat();
         this.columnTypeList = new ArrayList<>();
@@ -48,7 +60,7 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
                 .getStandardStructObjectInspector(this.columnNames, this.columnTypeList);
 
         Class<? extends CompressionCodec> codecClass = null;
-        if(compress == null){
+        if(CompressEnum.NONE.name().equalsIgnoreCase(compress)){
             codecClass = null;
         } else if(CompressEnum.GZIP.name().equalsIgnoreCase(compress)){
             codecClass = org.apache.hadoop.io.compress.GzipCodec.class;
@@ -62,38 +74,29 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
         }
 
         if(codecClass != null)
-            this.outputFormat.setOutputCompressorClass(conf, codecClass);
+            this.outputFormat.setOutputCompressorClass(jobConf, codecClass);
     }
 
     @Override
     public void open() throws IOException {
             String pathStr = outputFilePath + slash + UUID.randomUUID();
             logger.info("hdfs path:{}",pathStr);
-            this.recordWriter = this.outputFormat.getRecordWriter(null, conf, pathStr, Reporter.NULL);
+            outputFormat.setOutputPath(jobConf, new Path(pathStr));
+            this.recordWriter = this.outputFormat.getRecordWriter(null, jobConf, pathStr, Reporter.NULL);
     }
 
-    @Override
+    @SuppressWarnings("unchecked")
+	@Override
     public void writeRecord(Map<String,Object> row) throws IOException {
-
-        Object[] record = new Object[columnNames.size()];
-        for(int i = 0; i < row.getArity(); ++i) {
-            Object column = row.getField(i);
-
-            String columnName = inputColumnNames[i];
-            String fromType = inputColumnTypes[i];
-            String toType = columnNameTypeMap.get(columnName);
-
-            if(toType == null) {
+        Object[] record = new Object[this.columnSize];
+        for(int i = 0; i < this.columnSize; i++) {
+            Object data = row.get(this.columnNames.get(i));
+            if(data == null) {
                 continue;
             }
-
-            if(!fromType.equalsIgnoreCase(toType)) {
-                column = ClassUtil.convertType(column, fromType, toType);
-            }
-
-            String rowData = column.toString();
+            String rowData = data.toString();
             Object field = null;
-            switch(toType.toUpperCase()) {
+            switch(this.columnTypes.get(i).toUpperCase()) {
                 case "TINYINT":
                     field = Byte.valueOf(rowData);
                     break;
@@ -121,20 +124,17 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
                     field = Boolean.valueOf(rowData);
                     break;
                 case "DATE":
-                    field = DateUtil.columnToDate(column);
+                    field = DateUtil.columnToDate(data);
                     break;
                 case "TIMESTAMP":
-                    java.sql.Date d = DateUtil.columnToDate(column);
+                    java.sql.Date d = DateUtil.columnToDate(data);
                     field = new java.sql.Timestamp(d.getTime());
                     break;
                 default:
                     throw new IllegalArgumentException();
             }
-
-            record[columnNameIndexMap.get(columnName)] = field;
-
+            record[i] = field;
         }
-
         this.recordWriter.write(NullWritable.get(), this.orcSerde.serialize(Arrays.asList(record), this.inspector));
     }
 

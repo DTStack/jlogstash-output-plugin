@@ -5,8 +5,8 @@ package com.dtstack.jlogstash.format;
  * @author sishu.yss
  *
  */
-public enum CompressEnum {
+public enum ModeEnum {
 	
-	NONE,GZIP,BZIP2,SNAPPY;
+	APPEND,NONCONFLICT;
 
 }

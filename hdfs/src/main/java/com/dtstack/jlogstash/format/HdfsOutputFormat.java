@@ -42,23 +42,6 @@ public abstract class HdfsOutputFormat implements  OutputFormat {
 
     @Override
     public void configure() {
-        if (ModeEnum.APPEND.name().equalsIgnoreCase(this.writeMode))
-            this.overwrite = true;
-        else if (ModeEnum.NONCONFLICT.name().equalsIgnoreCase(this.writeMode))
-            this.overwrite = false;
-        else
-            throw new IllegalArgumentException("Unsupported WriteMode");
-        if(!overwrite) {
-            FileSystem fs = null;
-            try {
-                fs = FileSystem.get(conf);
-                if(fs.exists(new Path(outputFilePath))){
-                    throw new RuntimeException("nonConflict, you know that.");
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e.getMessage());
-            }
-        }
         columnSize = this.columnNames.size();
         jobConf = new JobConf(conf);
     }

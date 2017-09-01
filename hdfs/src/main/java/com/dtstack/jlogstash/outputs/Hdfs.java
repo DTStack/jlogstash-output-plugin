@@ -7,9 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +36,7 @@ public class Hdfs extends BaseOutput{
 	@Required(required = true)
 	private static String path ;//模板配置
 	
-	private static String store = "ORC";
+	private static String store = "TEXT";
 	
 	private static String writeMode = "APPEND";
 	
@@ -173,16 +170,23 @@ public class Hdfs extends BaseOutput{
 	public static void main(String[] args) throws Exception{
 		Hdfs.hadoopConf = "/Users/sishuyss/ysq/dtstack/rdos-web-all/conf/hadoop";
 		Hdfs.hadoopUserName = "admin";
-		Hdfs.path = "/ysq_test/test3.txt";
+		Hdfs.path = "/ysq_test/%{table}";
+		Hdfs.store = "ORC";
+		Map<String,String> sche = Maps.newConcurrentMap();
+		sche.put("table", "varchar");
+		sche.put("name","varchar");
+		sche.put("year", "int");
+		Hdfs.schema = sche;
 		Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
 		hdfs.prepare();
-		Path pp = new Path(path);
-		FileSystem fileSystem = FileSystem.get(configuration);
-        FSDataOutputStream fsDataOutputStream = fileSystem.create(pp,(short)1);
-        fsDataOutputStream.writeChars("hello world!");
-        fsDataOutputStream.hflush();
-        fsDataOutputStream.close();
-        fileSystem.close();
+		for(int i=0;i<10;i++){
+			Map<String,Object> event = Maps.newConcurrentMap();
+			event.put("table", "yxp11");
+			event.put("name", "jjj");
+			event.put("year", 12);
+			hdfs.emit(event);
+		}
+		hdfs.release();
 	}
 
 }

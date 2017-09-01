@@ -13,13 +13,20 @@ import org.apache.hadoop.mapred.Reporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
+
 import com.dtstack.jlogstash.format.CompressEnum;
 import com.dtstack.jlogstash.format.HdfsOutputFormat;
 import com.dtstack.jlogstash.format.HdfsUtil;
 import com.dtstack.jlogstash.format.util.DateUtil;
+import com.dtstack.jlogstash.format.util.HostUtil;
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 
@@ -52,7 +59,7 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
     	super.configure();
         this.orcSerde = new OrcSerde();
         this.outputFormat = new OrcOutputFormat();
-        this.columnTypeList = new ArrayList<>();
+        this.columnTypeList = Lists.newArrayList();
         for(String columnType : columnTypes) {
             this.columnTypeList.add(HdfsUtil.columnTypeToObjectInspetor(columnType));
         }
@@ -73,13 +80,14 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
             throw new IllegalArgumentException("Unsupported compress format: " + compress);
         }
 
-        if(codecClass != null)
+        if(codecClass != null){
             this.outputFormat.setOutputCompressorClass(jobConf, codecClass);
+        }
     }
 
     @Override
     public void open() throws IOException {
-            String pathStr = outputFilePath + slash + UUID.randomUUID();
+            String pathStr = String.format("%s/%s-%d-%s", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
             logger.info("hdfs path:{}",pathStr);
             outputFormat.setOutputPath(jobConf, new Path(pathStr));
             this.recordWriter = this.outputFormat.getRecordWriter(null, jobConf, pathStr, Reporter.NULL);
@@ -137,6 +145,4 @@ public class HdfsOrcOutputFormat extends HdfsOutputFormat{
         }
         this.recordWriter.write(NullWritable.get(), this.orcSerde.serialize(Arrays.asList(record), this.inspector));
     }
-
-
 }

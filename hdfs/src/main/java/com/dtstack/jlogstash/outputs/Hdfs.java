@@ -171,7 +171,7 @@ public class Hdfs extends BaseOutput{
 		Hdfs.hadoopConf = "/Users/sishuyss/ysq/dtstack/rdos-web-all/conf/hadoop";
 		Hdfs.hadoopUserName = "admin";
 		Hdfs.path = "/ysq_test/%{table}";
-		Hdfs.store = "ORC";
+		Hdfs.store = "TEXT";
 		Map<String,String> sche = Maps.newConcurrentMap();
 		sche.put("table", "varchar");
 		sche.put("name","varchar");
@@ -179,14 +179,14 @@ public class Hdfs extends BaseOutput{
 		Hdfs.schema = sche;
 		Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
 		hdfs.prepare();
-		for(int i=0;i<10000;i++){
+		for(int i=0;i<100;i++){
 			Map<String,Object> event = Maps.newConcurrentMap();
-			event.put("table", "yxp11");
+			event.put("table", "ysq");
 			event.put("name", "jjj");
 			event.put("year", 12);
 			hdfs.emit(event);
 		}
-//		hdfs.release();
+		hdfs.release();
 	}
 
 }

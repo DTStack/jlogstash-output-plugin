@@ -18,11 +18,9 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.dtstack.jlogstash.format.CompressEnum;
 import com.dtstack.jlogstash.format.HdfsOutputFormat;
 import com.dtstack.jlogstash.format.util.HostUtil;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -30,7 +28,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 
@@ -62,7 +59,7 @@ public class HdfsTextOutputFormat extends HdfsOutputFormat {
 	@Override
 	public void configure() {
 		super.configure();
-		outputFormat = new TextOutputFormat();
+		outputFormat = new InnerTextOutputFormat();
 		Class<? extends CompressionCodec> codecClass = null;
 		if (CompressEnum.NONE.name().equalsIgnoreCase(compress)) {
 			codecClass = null;
@@ -81,7 +78,7 @@ public class HdfsTextOutputFormat extends HdfsOutputFormat {
 
 	@Override
 	public void open() throws IOException {
-        String pathStr = String.format("%s/%s-%d-%s.txt", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId(),UUID.randomUUID().toString());
+        String pathStr = String.format("%s/%s-%d.txt", outputFilePath,HostUtil.getHostName(),Thread.currentThread().getId());
 		logger.info("hdfs path:{}", pathStr);
 		// // 此处好像并没有什么卵用
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");

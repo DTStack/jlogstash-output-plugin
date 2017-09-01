@@ -100,9 +100,9 @@ public class Hdfs extends BaseOutput{
 				}
 				hdfsOutputFormat.configure();
 				hdfsOutputFormat.open();
-				hdfsOutputFormat.writeRecord(event);
 				hdfsOutputFormats.put(realPath, hdfsOutputFormat);
 			}
+			hdfsOutputFormat.writeRecord(event);
 		}catch(Exception e){
 			logger.error("",e);
 		}

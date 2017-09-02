@@ -132,7 +132,7 @@ public class Hdfs extends BaseOutput{
 			        for(String sche:schema){
 			        	String[] sc = sche.split(":");
 			        	columns.add(sc[0]);
-			        	columns.add(sc[1]);
+			        	columnTypes.add(sc[1]);
 			        }
 				}
 			}
@@ -171,11 +171,11 @@ public class Hdfs extends BaseOutput{
 		Hdfs.hadoopUserName = "admin";
 		Hdfs.path = "/ysq_test/%{table}";
 		Hdfs.store = "TEXT";
-		Hdfs.compression="GZIP";
+//		Hdfs.compression="GZIP";
 		List<String> sche = Lists.newArrayList("table:varchar","name:varchar","year:int","op:varchar");
 		Hdfs.schema = sche;
 		
-		for(int i =0;i<3;i++){
+		for(int i =0;i<1;i++){
 			new Thread(new Runnable(){
 
 				@Override
@@ -186,14 +186,14 @@ public class Hdfs extends BaseOutput{
 					hdfs.prepare();
 					for(int i=0;i<100;i++){
 						Map<String,Object> event = Maps.newConcurrentMap();
-						event.put("table", "ssss");
+						event.put("table", "iiiii");
 						event.put("name", "jjj");
 						event.put("year", 12);
 						Map<String,Object> mm = Maps.newConcurrentMap();
 						mm.put("hh", "ll");
 						mm.put("tt",1);
 						event.put("op", mm);
-						hdfs.emit(event);
+						hdfs.emit(event);	
 					}
 					hdfs.release();
 				}

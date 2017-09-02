@@ -51,7 +51,7 @@ public class Hdfs extends BaseOutput{
 	public static String timezone;
 	
 	@Required(required = true)
-	private static Map<String,String> schema;
+	private static List<String> schema;//["name:varchar"]
 	
 	private static List<String> columns;
 	
@@ -129,16 +129,15 @@ public class Hdfs extends BaseOutput{
 					charset = Charset.forName(charsetName);
 					columns = Lists.newArrayList();
 					columnTypes = Lists.newArrayList();
-					Set<Map.Entry<String,String>> entrys = schema.entrySet();
-					for(Map.Entry<String,String> entry:entrys){
-						columns.add(entry.getKey());
-						columnTypes.add(entry.getValue());
-					}
+			        for(String sche:schema){
+			        	String[] sc = sche.split(":");
+			        	columns.add(sc[0]);
+			        	columns.add(sc[1]);
+			        }
 				}
 			}
 		}
 	}
-	
 	
 	private void setHadoopConfiguration() throws Exception{
 		if(configuration == null){
@@ -172,21 +171,33 @@ public class Hdfs extends BaseOutput{
 		Hdfs.hadoopUserName = "admin";
 		Hdfs.path = "/ysq_test/%{table}";
 		Hdfs.store = "TEXT";
-		Map<String,String> sche = Maps.newConcurrentMap();
-		sche.put("table", "varchar");
-		sche.put("name","varchar");
-		sche.put("year", "int");
+		Hdfs.compression="GZIP";
+		List<String> sche = Lists.newArrayList("table:varchar","name:varchar","year:int","op:varchar");
 		Hdfs.schema = sche;
-		Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
-		hdfs.prepare();
-		for(int i=0;i<100;i++){
-			Map<String,Object> event = Maps.newConcurrentMap();
-			event.put("table", "ysq");
-			event.put("name", "jjj");
-			event.put("year", 12);
-			hdfs.emit(event);
-		}
-		hdfs.release();
-	}
+		
+		for(int i =0;i<3;i++){
+			new Thread(new Runnable(){
 
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					
+					Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
+					hdfs.prepare();
+					for(int i=0;i<100;i++){
+						Map<String,Object> event = Maps.newConcurrentMap();
+						event.put("table", "ssss");
+						event.put("name", "jjj");
+						event.put("year", 12);
+						Map<String,Object> mm = Maps.newConcurrentMap();
+						mm.put("hh", "ll");
+						mm.put("tt",1);
+						event.put("op", mm);
+						hdfs.emit(event);
+					}
+					hdfs.release();
+				}
+			}).start();;
+		}
+	}
 }

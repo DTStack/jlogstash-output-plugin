@@ -150,3 +150,7 @@
 
   timezone: 时区
   
+  hadoopUserName ： 访问hadoop 的用户名
+  
+  schema：写入hadoop的数据格式/["name:varchar"]
+  

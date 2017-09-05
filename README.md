@@ -133,4 +133,20 @@
 
   delimiter: 发送的字符串的分隔符，默认是系统行分隔符
   
+
+# Hdfs 
+
+  hadoopConf:hadoop 配置文件目录（默认读取环境变量HADOOP_CONF_DIR）
+	
+  path:写入hdfs路径目录 必填
+
+  store: 存储类型（现在支持text，orc）
+
+  compression：数据写入的压缩类型（NONE,GZIP,BZIP2,SNAPPY）
+
+  charsetName: 字符集（默认 utf-8）
+
+  delimiter：分隔符（text 类型适用）
+
+  timezone: 时区
   

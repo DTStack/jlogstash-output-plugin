@@ -30,7 +30,6 @@ public class Hdfs extends BaseOutput{
 	
 	private static Logger logger = LoggerFactory.getLogger(Hdfs.class);
 
-	@Required(required = true)
 	private static String hadoopConf = System.getenv("HADOOP_CONF_DIR");
 	
 	@Required(required = true)

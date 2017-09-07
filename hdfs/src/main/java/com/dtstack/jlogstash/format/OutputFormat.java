@@ -8,7 +8,6 @@ import java.util.Map;
  * 
  * @author sishu.yss
  *
- * @param <IT>
  */
 public interface OutputFormat extends Serializable {
 	

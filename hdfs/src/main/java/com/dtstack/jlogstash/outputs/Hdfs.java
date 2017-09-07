@@ -168,7 +168,7 @@ public class Hdfs extends BaseOutput{
 	public static void main(String[] args) throws Exception{
 		Hdfs.hadoopConf = "/Users/sishuyss/ysq/dtstack/rdos-web-all/conf/hadoop";
 		Hdfs.hadoopUserName = "admin";
-		Hdfs.path = "/ysq_test/%{table}";
+		Hdfs.path = "/ysq_test/%{table}-%{+YYYY.MM.dd}";
 		Hdfs.store = "TEXT";
 //		Hdfs.compression="GZIP";
 		List<String> sche = Lists.newArrayList("table:varchar","name:varchar","year:int","op:varchar");
@@ -188,6 +188,7 @@ public class Hdfs extends BaseOutput{
 						event.put("table", "iiiii");
 						event.put("name", "jjj");
 						event.put("year", 12);
+						event.put("@timestamp", "2017-09-05T09:47:45.040103");
 						Map<String,Object> mm = Maps.newConcurrentMap();
 						mm.put("hh", "ll");
 						mm.put("tt",1);

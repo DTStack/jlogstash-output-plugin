@@ -51,4 +51,5 @@ public abstract class HdfsOutputFormat implements  OutputFormat {
             rw.close(Reporter.NULL);
         }
     }
+    
 }

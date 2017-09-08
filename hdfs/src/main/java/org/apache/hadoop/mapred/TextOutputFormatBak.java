@@ -42,7 +42,7 @@ import org.apache.hadoop.util.*;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Stable
-public class TextOutputFormat<K, V> extends FileOutputFormat<K, V> {
+public class TextOutputFormatBak<K, V> extends FileOutputFormat<K, V> {
 
   protected static class LineRecordWriter<K, V>
     implements RecordWriter<K, V> {

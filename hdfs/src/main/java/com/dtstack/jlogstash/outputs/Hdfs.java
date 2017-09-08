@@ -113,7 +113,7 @@ public class Hdfs extends BaseOutput{
 							lock.lockInterruptibly();
 							lockBoolean.set(false);
 							release();
-							logger.info("hdfs commit again...");
+							logger.warn("hdfs commit again...");
 						}finally{
 							lock.unlock();
 							lockBoolean.set(true);

@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.outputs.BaseOutput;
 import com.dtstack.jlogstash.render.Formatter;
+import com.google.common.collect.Maps;
 
 /**
  * 
@@ -69,7 +70,7 @@ public class Kafka extends BaseOutput {
 	@Required(required=true)
 	private static String brokerList;
 	
-	private Map<String,String> producerSettings;
+	private static Map<String,String> producerSettings;
 	
 	@SuppressWarnings("rawtypes")
 	public Kafka(Map config) {
@@ -138,6 +139,24 @@ public class Kafka extends BaseOutput {
 		}
 	}
 	 public static void main(String[] args){
+		 
+		 Kafka.topic="oggoggogg";
+		 Kafka.brokerList = "116.62.164.243:9092";
+		 
+		 Kafka.producerSettings= Maps.newConcurrentMap();
+			 
+		 Kafka.producerSettings.put("producer.type", "async");
+		 Kafka.producerSettings.put("key.serializer.class", "kafka.serializer.StringEncoder");
+		 Kafka.producerSettings.put("value.serializer.class", "kafka.serializer.StringEncoder");
+		 
+		 Kafka kafka = new Kafka(Maps.newConcurrentMap());
+		 kafka.prepare();
+		 
+		 for(int i=0;i<10;i++){
+			 Map dd = Maps.newConcurrentMap();
+			 dd.put("hhh", 2123);
+			 kafka.emit(dd);
+		 }
 		 
 	 }
 }

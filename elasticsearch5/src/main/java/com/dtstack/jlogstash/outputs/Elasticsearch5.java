@@ -17,16 +17,20 @@
  */
 package com.dtstack.jlogstash.outputs;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-//import java.util.concurrent.atomic.AtomicLong;
-
+import java.util.Iterator;
+import java.util.HashSet;
+import java.util.Arrays;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionRequest;
@@ -48,6 +52,8 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.index.mapper.MapperException;
 
 import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.outputs.BaseOutput;
@@ -81,6 +87,8 @@ public class Elasticsearch5 extends BaseOutput {
     public static List<String> hosts;
     
     private static boolean sniff=true;
+
+    private static Set<String> protectionKeySet;
     
     private static int bulkActions = 20000; 
     
@@ -93,28 +101,23 @@ public class Elasticsearch5 extends BaseOutput {
     private BulkProcessor bulkProcessor;
     
     private TransportClient esclient;
-    
-//    private AtomicLong sendReqs = new AtomicLong(0);
-//    
-//    private AtomicLong ackReqs = new AtomicLong(0);
-//   
-//    private int maxLag = bulkActions;
-    
-//    private AtomicLong needDelayTime = new AtomicLong(0l);
-    
+
+    private static String protectionKeys = "message";
+
     private AtomicBoolean isClusterOn = new AtomicBoolean(true);
     
     private ExecutorService executor;
     
-    @SuppressWarnings("rawtypes")
 	public Elasticsearch5(Map config) {
         super(config);
     }
 
     public void prepare() {
     	try {
+            protectionKeySet = new HashSet<>(Arrays.asList(protectionKeys.split(",")));
     		executor = Executors.newSingleThreadExecutor();
              this.initESClient();
+
             } catch (Exception e) {
                 logger.error(e.getMessage());
                 System.exit(1);
@@ -164,27 +167,28 @@ public class Elasticsearch5 extends BaseOutput {
                                     case TOO_MANY_REQUESTS:
                                         if (totalFailed == 0) {
                                             logger.error("too many request {}:{}",item.getIndex(),item.getFailureMessage());
-                                        } 
-                                        addFailedMsg(requests.get(item.getItemId()));
+                                        }
+                                        addFailedMsg(((IndexRequest) requests.get(item.getItemId())).sourceAsMap());
                                         break;
                                     case SERVICE_UNAVAILABLE:
                                         if (toberetry == 0) {
                                             logger.error("sevice unavaible cause {}:{}",item.getIndex(),item.getFailureMessage());
                                         }
-//                                        toberetry++;
-                                        addFailedMsg(requests.get(item.getItemId()));
+                                        addFailedMsg(((IndexRequest) requests.get(item.getItemId())).sourceAsMap());
                                         break;
                                     default:
-                                        if (totalFailed == 0) {
-                                            logger.error("data formate cause {}:{}:{}",item.getIndex(),((IndexRequest)requests.get(item.getItemId())).sourceAsMap(),item.getFailureMessage());
-                                        }
+                                        Map<String, Object> sourceEvent = ((IndexRequest) requests.get(item.getItemId()))
+                                                .sourceAsMap();
+                                        logger.warn("bulk error,fail status={}, message={}, sourceEvent={}",
+                                                item.getFailure().getStatus(), item.getFailure().getMessage(), sourceEvent);
+                                        logger.error("bulk error", item.getFailure().getCause());
+                                        doError(sourceEvent, item.getFailure().getCause());
                                         break;
                                 }
                                 totalFailed++;
                             }
                         }
                         
-//                        addAckSeqs(requests.size());
 
                         if (totalFailed > 0) {
                             logger.info(totalFailed + " doc failed, "
@@ -193,13 +197,6 @@ public class Elasticsearch5 extends BaseOutput {
                             logger.debug("no failed docs");
                         }
 
-//                        if (toberetry > 0) {
-//                        	  logger.info("sleep " + toberetry / 2
-//                                      + "millseconds after bulk failure");
-//                              setDelayTime(toberetry / 2);
-//                        } else {
-//                            logger.debug("no docs need to retry");
-//                        }
 
                     }
 
@@ -212,8 +209,6 @@ public class Elasticsearch5 extends BaseOutput {
                         	addFailedMsg(request);
                         }
                         
-//                        addAckSeqs(arg1.requests().size());
-//                        setDelayTime(1000);
                     }
 
                     @Override
@@ -229,8 +224,7 @@ public class Elasticsearch5 extends BaseOutput {
                 .setConcurrentRequests(concurrentRequests).build();
     }
 
-    @SuppressWarnings("rawtypes")
-	public void emit(Map event) {
+    public void doEmit(Map event) {
         String _index = Formatter.format(event, index, indexTimezone);
         String _indexType = Formatter.format(event, documentType, indexTimezone);
         IndexRequest indexRequest;
@@ -245,64 +239,120 @@ public class Elasticsearch5 extends BaseOutput {
             }
         }
         this.bulkProcessor.add(indexRequest);
-        checkNeedWait();
     }
-    
+
+	public void emit(Map event) {
+
+        logger.info("event enter,event={}", event);
+        try {
+            checkNeedWait();
+            doEmit(event);
+        } catch (Exception e) {
+            logger.warn("emit error, event={}", event);
+            logger.error("emit error", e);
+
+            doError(event, e);
+
+        }
+    }
+
+    public void doError(Map event, Throwable e) {
+        if (!(e instanceof MapperException) && (e instanceof ElasticsearchException || e instanceof IOException)) {
+            doErrorFirst(event);
+        } else {
+            doErrorCandidate(event);
+        }
+    }
+
+    public void doErrorFirst(Map<String, Object> event) {
+
+        logger.error("doErrorFirst event ={}", event);
+
+        addFailedMsg(event);
+    }
+
+    public void doErrorCandidate(Map<String, Object> event) {
+
+        boolean flag = false;
+        for (Map.Entry<String, Object> entry : event.entrySet()) {
+            if (!protectionKeySet.contains(entry.getKey())) {
+                flag = true;
+                break;
+            }
+        }
+
+        if (flag == false) {
+            logger.error("size equal protectionKeySet, not save, event={}", event);
+            return;
+        }
+
+        Map<String, Object> newEvent = new HashMap();
+        for (Iterator<String> s = protectionKeySet.iterator(); s.hasNext();) {
+            String k = s.next();
+            if (event.containsKey(k)) {
+                newEvent.put(k, event.get(k));
+            }
+        }
+
+        addFailedMsg(newEvent);
+
+        logger.info("doErrorCandidate end,newEvent={}", newEvent);
+    }
+
     @Override
-    public void sendFailedMsg(Object msg){
-    	
-//    	if(needDelayTime.get() >  0){//不需要sleep影响性能
-//    		try {
-//				Thread.sleep(needDelayTime.get());
-//			} catch (InterruptedException e) {
-//				logger.error("", e);
-//			}
-//    	}
-    	
-    	this.bulkProcessor.add((IndexRequest)msg);
-//    	needDelayTime.set(0);
-    	checkNeedWait();
+    public void addFailedMsg(Object msg) {
+        if (msg instanceof Map) {
+            super.addFailedMsg(msg);
+            return;
+        }
+
+        throw new IllegalArgumentException("addFailedMsg only accept Map instance");
     }
-    
-    
+
+    @Override
+    public void sendFailedMsg(Object msg) {
+
+        try {
+
+            checkNeedWait();
+
+            Map<String, Object> event = (Map) msg;
+
+            // 加入时间戳，用于计算耗时
+            // event.put(esCreatedTimeKey, Public.getTimeStamp(DateTimeZone.UTC));
+
+            logger.error("sendFailedMsg,msg={}", msg);
+            emit(event);
+
+        } catch (Exception e) {
+            logger.error("sendFailedMsg error", e);
+
+            if (!(e instanceof MapperException) && (e instanceof ElasticsearchException || e instanceof IOException)) {
+                addFailedMsg(msg);
+            }
+        }
+
+    }
+
+
     @Override
     public void release(){
     	if(bulkProcessor!=null)bulkProcessor.close();
     }
-    
-    public void checkNeedWait(){
-    	while(!isClusterOn.get()){//等待集群可用
-    		try {
-    			logger.warn("wait cluster avaliable...");
-				Thread.sleep(1000);//FIXME
-			} catch (InterruptedException e) {
-				logger.error("", e);
-			}
-    	}
-//    	sendReqs.incrementAndGet();
-//    	if(sendReqs.get() - ackReqs.get() < maxLag){
-//    		return;
-//    	}
-//    	while(sendReqs.get() - ackReqs.get() > maxLag){
-//    		try {
-//    			logger.warn("wait sendReqs less than ackReqs...");
-//				Thread.sleep(1000);
-//			} catch (InterruptedException e) {
-//				logger.error("", e);
-//			}
-//    	}
+
+    public void checkNeedWait() {
+        while (!isClusterOn.get()) {// 等待集群可用
+            try {
+                logger.warn("wait cluster avaliable...");
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                logger.error("", e);
+            }
+        }
+
     }
-    
-//    public void addAckSeqs(int num){
-//    	ackReqs.addAndGet(num);
-//    }
-    
-//    public void setDelayTime(long delayTime){
-//    	if(delayTime > needDelayTime.get()){
-//    		needDelayTime.set(delayTime);
-//    	}
-//    }
-    
+
+
     class ClusterMonitor implements Runnable{
     	
     	private TransportClient transportClient;

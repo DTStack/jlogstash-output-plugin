@@ -1,5 +1,4 @@
 # Created by .ignore support plugin (hsz.mobi)
-.gitignore
 .idea/
 .metadata/
 RemoteSystemsTempFiles/
@@ -21,3 +20,4 @@ netty/src/test/
 odps/src/test/
 performance/src/test/
 stdout/src/test/
+*.iml

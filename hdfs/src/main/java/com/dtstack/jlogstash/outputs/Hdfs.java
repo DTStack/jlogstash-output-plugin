@@ -238,27 +238,27 @@ public class Hdfs extends BaseOutput{
 		List<String> sche = Lists.newArrayList("table:varchar","op_type:varchar","op_ts:varchar","current_ts:varchar","pos:varchar","before:varchar","after:varchar");
 		Hdfs.schema = sche;
 		
-		for(int i =0;i<1;i++){
-			new Thread(new Runnable(){
-
-				@Override
-				public void run() {
-					// TODO Auto-generated method stub
-					
-					Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
-					hdfs.prepare();
-					for(int i=0;i<100000;i++){
-						Map<String,Object> event = Maps.newConcurrentMap();
-						event.put("table", "TEST.T");
-						event.put("op_type", "U");
-						event.put("op_ts", "2017-09-05 09:47:45.040103");
-						event.put("current_ts", "2017-09-05T17:47:52.868000");
-						event.put("before", "{\"ID\":12,\"NAME\":\"dsasasdas\"}");
-						event.put("after", "{\"ID\":12,\"NAME\":\"1234455\"}");
-						hdfs.emit(event);	
-					}
-				}
-			}).start();
-		}
+//		for(int i =0;i<1;i++){
+//			new Thread(new Runnable(){
+//
+//				@Override
+//				public void run() {
+//					// TODO Auto-generated method stub
+//					
+//					Hdfs hdfs = new Hdfs(Maps.newConcurrentMap());
+//					hdfs.prepare();
+//					for(int i=0;i<100000;i++){
+//						Map<String,Object> event = Maps.newConcurrentMap();
+//						event.put("table", "TEST.T");
+//						event.put("op_type", "U");
+//						event.put("op_ts", "2017-09-05 09:47:45.040103");
+//						event.put("current_ts", "2017-09-05T17:47:52.868000");
+//						event.put("before", "{\"ID\":12,\"NAME\":\"dsasasdas\"}");
+//						event.put("after", "{\"ID\":12,\"NAME\":\"1234455\"}");
+//						hdfs.emit(event);	
+//					}
+//				}
+//			}).start();
+//		}
 	}
 }

@@ -1,0 +1,23 @@
+# Created by .ignore support plugin (hsz.mobi)
+.idea/
+.metadata/
+RemoteSystemsTempFiles/
+elasticsearch/src/test/
+elasticsearch5/src/main/source/
+file/src/test/
+hdfs/.idea/.name
+hdfs/.idea/compiler.xml
+hdfs/.idea/copyright/
+hdfs/.idea/encodings.xml
+hdfs/.idea/libraries/
+hdfs/.idea/misc.xml
+hdfs/.idea/modules.xml
+hdfs/.idea/thriftCompiler.xml
+hdfs/.idea/workspace.xml
+hdfs/src/test/
+kafka/src/test/
+netty/src/test/
+odps/src/test/
+performance/src/test/
+stdout/src/test/
+*.iml

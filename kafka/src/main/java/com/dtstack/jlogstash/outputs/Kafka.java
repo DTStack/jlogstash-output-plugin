@@ -17,7 +17,6 @@
  */
 package com.dtstack.jlogstash.outputs;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -88,6 +87,7 @@ public class Kafka extends BaseOutput {
 	 * props.put("batch.num.messages", "1024");
 	 * props.put("client.id", "");			
 	 */
+	@Override
 	public void prepare() {
 		try{
 			if(topicSelect!=null){
@@ -114,6 +114,7 @@ public class Kafka extends BaseOutput {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
 	protected void emit(Map event) {
 		try {
 			String tp = null;

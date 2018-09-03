@@ -58,14 +58,6 @@ import com.dtstack.jlogstash.annotation.Required;
 import com.dtstack.jlogstash.render.Formatter;
 
 
-/**
- * 
- * Reason: TODO ADD REASON(可选)
- * Date: 2016年11月24日 下午1:35:21
- * Company: www.dtstack.com
- * @author sishu.yss
- *
- */
 @SuppressWarnings("serial")
 public class Elasticsearch6 extends BaseOutput {
     private static final Logger logger = LoggerFactory.getLogger(Elasticsearch6.class);

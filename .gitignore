@@ -21,3 +21,5 @@ odps/src/test/
 performance/src/test/
 stdout/src/test/
 *.iml
+.project
+.settings
